@@ -52,9 +52,14 @@ A serious local viewer, with taste.
 The current prototype already supports:
 
 - opening an image from a native file picker,
+- opening a folder directly from a native folder picker,
 - displaying the selected image,
 - indexing sibling images in the same directory,
-- navigating previous / next within the folder,
+- navigating through the folder with buttons and keyboard shortcuts,
+- basic zoom controls with fit/manual modes,
+- mouse wheel zoom support,
+- manual mode with a scrollable zoomed viewer,
+- a cleaner viewer status line with current file metadata,
 - compiling cleanly on the current Rust + Iced stack.
 
 This is the foundation, not the finished experience.
@@ -100,18 +105,24 @@ Implemented today:
 - [x] Rust desktop foundation
 - [x] Iced application shell
 - [x] Native image picker
+- [x] Native folder picker
 - [x] Local folder indexing
 - [x] Previous / next navigation
+- [x] Keyboard-first navigation shortcuts
+- [x] Basic fit / zoom controls
+- [x] Mouse wheel zoom
+- [x] Scrollable manual zoom mode
+- [x] Cleaner status bar
+- [x] Visual polish on the empty state
 
 Planned next:
 
-- [ ] real folder opening
-- [ ] fit-to-window
-- [ ] zoom in / zoom out
 - [ ] pan / image movement
-- [ ] keyboard shortcuts
-- [ ] cleaner status bar
-- [ ] visual polish
+- [ ] smarter fit-to-viewport behavior
+- [ ] smoother zoom feel
+- [ ] richer visual polish
+- [ ] metadata layout cleanup
+- [ ] large-folder handling
 
 ---
 
@@ -172,13 +183,14 @@ It is meant to feel personal, local, elegant, and fast, while also standing on i
 ### Viewer MVP
 
 - [x] Open image
+- [x] Open folder directly
 - [x] Detect other images in current folder
 - [x] Navigate between images
-- [ ] Open folder directly
-- [ ] Fit image to viewport
-- [ ] Zoom controls
+- [x] Fit / manual display modes
+- [x] Zoom controls
+- [x] Keyboard-first navigation
+- [x] Scrollable manual exploration
 - [ ] Pan controls
-- [ ] Keyboard-first navigation
 - [ ] Better layout and visual hierarchy
 
 ### After MVP
