@@ -356,9 +356,9 @@ fn viewer_meta_line(state: &ShiftPrivate) -> String {
 
 fn shortcuts_line(state: &ShiftPrivate) -> String {
     if state.current_path.is_some() && !state.fit_to_view {
-        "Raccourcis : molette ou +/- zoom (aussi ,/.), 0/F ajuster, 1 = 100%, Home/End, O, D".to_string()
+        "Raccourcis : molette ou +/- zoom (aussi ,/.), 0/F ajuster, 1/R = 100%, Home/End, O, D".to_string()
     } else if state.current_path.is_some() {
-        "Raccourcis : ←/→ naviguer, Home/End début-fin, molette ou +/- zoom (aussi ,/.), 0/F ajuster, 1 = 100%, O image, D dossier".to_string()
+        "Raccourcis : ←/→ naviguer, Home/End début-fin, molette ou +/- zoom (aussi ,/.), 0/F ajuster, 1/R = 100%, O image, D dossier".to_string()
     } else {
         "Raccourcis : O image, D dossier".to_string()
     }
@@ -420,7 +420,7 @@ fn keyboard_action(state: &ShiftPrivate, event: &Event) -> Option<Message> {
         Key::Character(character) if matches_char(character, &["0", "f"]) && state.current_path.is_some() => {
             Some(Message::ToggleFit)
         }
-        Key::Character(character) if matches_char(character, &["1"]) && state.current_path.is_some() => {
+        Key::Character(character) if matches_char(character, &["1", "r"]) && state.current_path.is_some() => {
             Some(Message::ResetZoom)
         }
         Key::Character(character) if matches_char(character, &["o"]) => Some(Message::OpenFile),
