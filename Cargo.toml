@@ -1,0 +1,10 @@
+[package]
+name = "shift_private"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+iced = { version = "0.14", features = ["image", "tokio"] }
+rfd = "0.17"
+image = { version = "0.25", default-features = true }
+anyhow = "1"
