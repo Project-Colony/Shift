@@ -356,9 +356,9 @@ fn viewer_meta_line(state: &ShiftPrivate) -> String {
 
 fn shortcuts_line(state: &ShiftPrivate) -> String {
     if state.current_path.is_some() && !state.fit_to_view {
-        "Raccourcis : molette ou +/- zoom (aussi ,/.), 0/F ajuster, 1/R = 100%, Home/End, O, D".to_string()
+        "Raccourcis : N/P ou Home/End, molette ou +/- zoom (aussi ,/.), 0/F ajuster, 1/R = 100%, O, D".to_string()
     } else if state.current_path.is_some() {
-        "Raccourcis : ←/→ naviguer, Home/End début-fin, molette ou +/- zoom (aussi ,/.), 0/F ajuster, 1/R = 100%, O image, D dossier".to_string()
+        "Raccourcis : ←/→ ou N/P, Home/End début-fin, molette ou +/- zoom (aussi ,/.), 0/F ajuster, 1/R = 100%, O image, D dossier".to_string()
     } else {
         "Raccourcis : O image, D dossier".to_string()
     }
@@ -409,6 +409,12 @@ fn keyboard_action(state: &ShiftPrivate, event: &Event) -> Option<Message> {
     match key.as_ref() {
         Key::Named(Named::ArrowLeft) if state.current_index.is_some() => Some(Message::PreviousImage),
         Key::Named(Named::ArrowRight) if state.current_index.is_some() => Some(Message::NextImage),
+        Key::Character(character) if matches_char(character, &["p"]) && state.current_index.is_some() => {
+            Some(Message::PreviousImage)
+        }
+        Key::Character(character) if matches_char(character, &["n"]) && state.current_index.is_some() => {
+            Some(Message::NextImage)
+        }
         Key::Named(Named::Home) if state.current_index.is_some() => Some(Message::FirstImage),
         Key::Named(Named::End) if state.current_index.is_some() => Some(Message::LastImage),
         Key::Character(character) if matches_char(character, &["+", "=", "."]) && state.current_path.is_some() => {
