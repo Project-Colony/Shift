@@ -1,130 +1,191 @@
 # Shift Private
 
-Shift Private est une visionneuse d’images locale en Rust, pensée comme une alternative moderne à `imv` pour Linux, avec une identité plus soignée, plus Colony, et une base propre pour évoluer.
+**A fast, local image viewer for Linux, built in Rust.**
 
-L’idée n’est pas de faire un ouvre-image générique de plus. Le but est de construire un viewer :
+Shift Private is a modern alternative to `imv`: lightweight, responsive, keyboard-friendly, and designed to feel sharper, cleaner, and more premium.
 
-- très rapide au démarrage,
-- fluide à l’usage,
-- agréable au clavier comme à la souris,
-- capable de zoomer fort,
-- sobre en mémoire,
-- et assez élégant pour donner envie de l’utiliser tous les jours.
+Built for the Colony ecosystem, but useful on its own.
 
-## État actuel
+[![Rust](https://img.shields.io/badge/Rust-2024-black?logo=rust)](#build-from-source)
+[![UI](https://img.shields.io/badge/UI-Iced-7c3aed)](#stack)
+[![Platform](https://img.shields.io/badge/platform-Linux-1793d1?logo=linux)](#status)
+[![Status](https://img.shields.io/badge/status-prototype-8b5cf6)](#status)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Le prototype actuel permet déjà :
+---
 
-- d’ouvrir une image via un sélecteur de fichiers,
-- d’afficher l’image choisie,
-- d’indexer automatiquement les autres images du même dossier,
-- de naviguer entre les images précédentes et suivantes,
-- d’avoir une première base desktop en Rust + Iced qui compile proprement.
+## Why Shift Private?
 
-Ce n’est pas encore la version finale. C’est une fondation propre.
+Most image viewers are either:
 
-## Vision produit
+- extremely fast, but visually bare,
+- comfortable, but too heavy,
+- or built like generic file tools instead of something you actually want to keep open.
 
-Shift Private vise une expérience de viewer locale, rapide et premium.
+Shift Private aims for a better balance:
 
-### Priorités du projet
+- **fast startup**
+- **smooth navigation**
+- **deep zoom**
+- **clean minimal UI**
+- **local-first workflow**
+- **a stronger visual identity**
 
-- ouverture instantanée,
-- navigation fluide,
-- zoom précis et profond,
-- fit-to-window propre,
-- bon confort clavier,
-- UI minimaliste et lisible,
-- base technique extensible sans sur-ingénierie.
+Not a bloated asset manager.
+Not a generic gallery app.
+A serious local viewer, with taste.
 
-### Ce que le projet pourra devenir
+---
 
-À terme, Shift Private pourra évoluer vers quelque chose de plus riche :
+## Current prototype
 
-- miniatures de dossier,
-- panneau latéral ou bandeau filmstrip,
-- favoris,
-- tags,
-- collections,
-- raccourcis clavier avancés,
-- wallpapers,
-- support GIF et formats supplémentaires,
-- galerie personnelle locale.
+The current prototype already supports:
 
-## Positionnement
+- opening an image from a native file picker,
+- displaying the selected image,
+- indexing sibling images in the same directory,
+- navigating previous / next within the folder,
+- compiling cleanly on the current Rust + Iced stack.
 
-Shift Private se place entre plusieurs mondes :
+This is the foundation, not the finished experience.
 
-- la vitesse brute d’un viewer Linux léger,
-- le confort d’une application desktop moderne,
-- et une direction visuelle plus propre, plus intime, plus Colony.
+---
 
-Ce n’est pas un DAM complexe.
-Ce n’est pas un clone lourd d’une galerie photo grand public.
-C’est un viewer local rapide, beau et sérieux.
+## Project goals
 
-## Stack technique
+### Core viewer experience
 
-- **Rust** pour la robustesse, la performance et la maintenabilité
-- **Iced** pour l’interface desktop
-- **rfd** pour les dialogues natifs
-- **image** pour le traitement/décodage d’images au besoin
+Shift Private is being built around a few priorities:
 
-## Philosophie technique
+- **instant feeling** when opening images,
+- **strong keyboard flow**,
+- **precise zoom and framing**,
+- **fit-to-window done right**,
+- **low memory footprint**,
+- **an interface that stays out of the way**.
 
-Le projet suit une ligne simple :
+### Long-term direction
 
-- commencer petit,
-- garder une architecture claire,
-- éviter la complexité prématurée,
-- construire d’abord une excellente expérience de visionnage,
-- puis seulement ajouter les couches galerie/organisation.
+Once the viewer core feels excellent, the project can grow into a richer local gallery:
 
-Autrement dit : un bon cœur avant les gadgets.
+- thumbnails / filmstrip
+- folder browsing
+- favorites
+- tags
+- collections
+- wallpaper helpers
+- better format support
+- personal gallery features
 
-## Roadmap courte
+The rule is simple: **nail the viewer first, expand second.**
 
-### MVP viewer
+---
 
-- [x] Base Rust + Iced
-- [x] Ouverture d’image
-- [x] Navigation locale dans le dossier
-- [ ] Ouverture de dossier réelle
-- [ ] Fit-to-window
-- [ ] Zoom avant / arrière
-- [ ] Pan / déplacement dans l’image
-- [ ] Raccourcis clavier
-- [ ] Barre d’état plus propre
+## Status
 
-### Suite naturelle
+Shift Private is currently in **prototype stage**.
 
-- [ ] Filmstrip / miniatures
-- [ ] Préchargement intelligent
-- [ ] Gestion de gros dossiers
-- [ ] Favoris
-- [ ] Tags / collections locales
-- [ ] Thème visuel Colony plus affirmé
+Implemented today:
 
-## Lancer le projet
+- [x] Rust desktop foundation
+- [x] Iced application shell
+- [x] Native image picker
+- [x] Local folder indexing
+- [x] Previous / next navigation
+
+Planned next:
+
+- [ ] real folder opening
+- [ ] fit-to-window
+- [ ] zoom in / zoom out
+- [ ] pan / image movement
+- [ ] keyboard shortcuts
+- [ ] cleaner status bar
+- [ ] visual polish
+
+---
+
+## Stack
+
+- **Rust** for speed, safety, and maintainability
+- **Iced** for the desktop UI
+- **rfd** for native dialogs
+- **image** for image handling and decoding support
+
+---
+
+## Design philosophy
+
+Shift Private is intentionally being built with restraint.
+
+The goal is not to over-engineer a huge gallery platform on day one.
+The goal is to build a viewer that feels good immediately, then grow from a solid core.
+
+That means:
+
+- simple architecture first,
+- clear responsibilities,
+- minimal unnecessary state,
+- performance-sensitive decisions,
+- and product polish that matters in daily use.
+
+---
+
+## Build from source
 
 ```bash
+git clone https://github.com/MotherSphere/Shift_Private.git
+cd Shift_Private
 cargo run
 ```
 
-Pour une build optimisée :
+Optimized build:
 
 ```bash
 cargo run --release
 ```
 
-## Pourquoi “Shift Private” ?
+---
 
-Parce que le projet cherche une sensation précise :
+## Position in the Colony ecosystem
 
-- quelque chose de personnel,
-- local,
-- discret,
-- rapide,
-- et un peu premium.
+Shift Private is part of the broader Colony spirit:
 
-Un outil qui ne donne pas l’impression d’être juste “technique”, mais vraiment agréable à garder près de soi.
+small, focused desktop tools built with care.
+
+It is meant to feel personal, local, elegant, and fast, while staying useful as a standalone Linux image viewer.
+
+---
+
+## Roadmap
+
+### Viewer MVP
+
+- [x] Open image
+- [x] Detect other images in current folder
+- [x] Navigate between images
+- [ ] Open folder directly
+- [ ] Fit image to viewport
+- [ ] Zoom controls
+- [ ] Pan controls
+- [ ] Keyboard-first navigation
+- [ ] Better layout and visual hierarchy
+
+### After MVP
+
+- [ ] Filmstrip / thumbnails
+- [ ] Smart preloading
+- [ ] Large-folder handling
+- [ ] Favorites
+- [ ] Local metadata / tags
+- [ ] Stronger Colony visual language
+
+---
+
+## Name
+
+**Shift Private** is meant to sound personal and discreet.
+
+Not a loud media suite.
+Not a cluttered library manager.
+Just a fast, intimate viewer that feels good to keep nearby.
