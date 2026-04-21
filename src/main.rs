@@ -356,9 +356,9 @@ fn viewer_meta_line(state: &ShiftPrivate) -> String {
 
 fn shortcuts_line(state: &ShiftPrivate) -> String {
     if state.current_path.is_some() && !state.fit_to_view {
-        "Raccourcis : molette ou +/- zoom (aussi ,/.), 0 ajuster, 1 = 100%, Home/End, O, D".to_string()
+        "Raccourcis : molette ou +/- zoom (aussi ,/.), 0/F ajuster, 1 = 100%, Home/End, O, D".to_string()
     } else if state.current_path.is_some() {
-        "Raccourcis : ←/→ naviguer, Home/End début-fin, molette ou +/- zoom (aussi ,/.), 0 ajuster, 1 = 100%, O image, D dossier".to_string()
+        "Raccourcis : ←/→ naviguer, Home/End début-fin, molette ou +/- zoom (aussi ,/.), 0/F ajuster, 1 = 100%, O image, D dossier".to_string()
     } else {
         "Raccourcis : O image, D dossier".to_string()
     }
@@ -368,7 +368,7 @@ fn viewer_hint_line(state: &ShiftPrivate) -> String {
     if state.current_path.is_some() && !state.fit_to_view {
         "Mode zoom manuel : fais défiler pour parcourir l’image.".to_string()
     } else if state.current_path.is_some() {
-        "Mode ajusté : passe en manuel pour explorer une image zoomée.".to_string()
+        "Mode ajusté : touche F pour passer vite en manuel sur une image zoomée.".to_string()
     } else {
         "Ouvre une image ou un dossier pour démarrer.".to_string()
     }
@@ -417,7 +417,7 @@ fn keyboard_action(state: &ShiftPrivate, event: &Event) -> Option<Message> {
         Key::Character(character) if matches_char(character, &["-", ","]) && state.current_path.is_some() => {
             Some(Message::ZoomOut)
         }
-        Key::Character(character) if matches_char(character, &["0"]) && state.current_path.is_some() => {
+        Key::Character(character) if matches_char(character, &["0", "f"]) && state.current_path.is_some() => {
             Some(Message::ToggleFit)
         }
         Key::Character(character) if matches_char(character, &["1"]) && state.current_path.is_some() => {
