@@ -1,14 +1,21 @@
 # Shift Private
 
-**A fast, local image viewer for Linux, built in Rust.**
+**A fast, local image viewer built in Rust.**
 
-Shift Private is a modern alternative to `imv`: lightweight, responsive, keyboard-friendly, and designed to feel sharper, cleaner, and more premium.
+Shift Private is a modern image viewer designed to be lightweight, responsive, keyboard-friendly, and visually clean, with a stronger identity than the usual utility-style viewers.
 
-Built for the Colony ecosystem, but useful on its own.
+Originally inspired by the speed and simplicity of tools like `imv`, Shift Private is **not Linux-only** and is intended to grow as a real cross-platform desktop viewer for:
+
+- Linux
+- Windows
+- macOS (Apple Silicon)
+- macOS (Intel)
+
+Built in the Colony spirit, but useful well beyond it.
 
 [![Rust](https://img.shields.io/badge/Rust-2024-black?logo=rust)](#build-from-source)
 [![UI](https://img.shields.io/badge/UI-Iced-7c3aed)](#stack)
-[![Platform](https://img.shields.io/badge/platform-Linux-1793d1?logo=linux)](#status)
+[![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20Windows%20%7C%20macOS-lightgrey)](#status)
 [![Status](https://img.shields.io/badge/status-prototype-8b5cf6)](#status)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -16,11 +23,13 @@ Built for the Colony ecosystem, but useful on its own.
 
 ## Why Shift Private?
 
-Most image viewers are either:
+Most image viewers lean too far in one direction.
+
+They are often either:
 
 - extremely fast, but visually bare,
 - comfortable, but too heavy,
-- or built like generic file tools instead of something you actually want to keep open.
+- or built like generic file browsers instead of tools you actually want to keep open.
 
 Shift Private aims for a better balance:
 
@@ -29,7 +38,8 @@ Shift Private aims for a better balance:
 - **deep zoom**
 - **clean minimal UI**
 - **local-first workflow**
-- **a stronger visual identity**
+- **strong cross-platform foundation**
+- **a sharper visual identity**
 
 Not a bloated asset manager.
 Not a generic gallery app.
@@ -153,7 +163,7 @@ Shift Private is part of the broader Colony spirit:
 
 small, focused desktop tools built with care.
 
-It is meant to feel personal, local, elegant, and fast, while staying useful as a standalone Linux image viewer.
+It is meant to feel personal, local, elegant, and fast, while also standing on its own as a cross-platform image viewer.
 
 ---
 
