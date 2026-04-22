@@ -336,17 +336,63 @@ fn viewer_meta_line(state: &ShiftPrivate) -> String {
 
 fn viewer_width(state: &ShiftPrivate) -> Length {
     if state.fit_to_view {
-        Length::Shrink
+        state
+            .image_info
+            .as_ref()
+            .map(|info| Length::Fixed(fit_base_width(info)))
+            .unwrap_or(Length::Shrink)
     } else {
-        Length::Fixed(VIEWER_BASE_WIDTH * state.zoom)
+        Length::Fixed(manual_base_width(state) * state.zoom)
     }
 }
 
 fn viewer_height(state: &ShiftPrivate) -> Length {
     if state.fit_to_view {
-        Length::Shrink
+        state
+            .image_info
+            .as_ref()
+            .map(|info| Length::Fixed(fit_base_height(info)))
+            .unwrap_or(Length::Shrink)
     } else {
-        Length::Fixed(VIEWER_BASE_HEIGHT * state.zoom)
+        Length::Fixed(manual_base_height(state) * state.zoom)
+    }
+}
+
+fn manual_base_width(state: &ShiftPrivate) -> f32 {
+    state
+        .image_info
+        .as_ref()
+        .map(|info| info.width as f32)
+        .unwrap_or(VIEWER_BASE_WIDTH)
+}
+
+fn manual_base_height(state: &ShiftPrivate) -> f32 {
+    state
+        .image_info
+        .as_ref()
+        .map(|info| info.height as f32)
+        .unwrap_or(VIEWER_BASE_HEIGHT)
+}
+
+fn fit_base_width(info: &ImageInfo) -> f32 {
+    let width = info.width as f32;
+    let height = info.height as f32;
+
+    if width >= height {
+        VIEWER_BASE_WIDTH.min(width)
+    } else {
+        (VIEWER_BASE_HEIGHT * (width / height)).max(220.0)
+    }
+}
+
+fn fit_base_height(info: &ImageInfo) -> f32 {
+    let width = info.width as f32;
+    let height = info.height as f32;
+
+    if height > width {
+        VIEWER_BASE_HEIGHT.min(height)
+    } else {
+        (VIEWER_BASE_WIDTH * (height / width)).max(160.0)
     }
 }
 
@@ -833,5 +879,21 @@ mod tests {
         );
 
         assert!(label.contains('…'));
+    }
+
+    #[test]
+    fn fit_dimensions_preserve_landscape_ratio() {
+        let info = ImageInfo { width: 1600, height: 900 };
+
+        assert_eq!(fit_base_width(&info), VIEWER_BASE_WIDTH);
+        assert_eq!(fit_base_height(&info), 540.0);
+    }
+
+    #[test]
+    fn fit_dimensions_preserve_portrait_ratio() {
+        let info = ImageInfo { width: 800, height: 1600 };
+
+        assert_eq!(fit_base_width(&info), 320.0);
+        assert_eq!(fit_base_height(&info), VIEWER_BASE_HEIGHT);
     }
 }
