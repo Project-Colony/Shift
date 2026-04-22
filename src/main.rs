@@ -15,6 +15,7 @@ const MAX_ZOOM: f32 = 6.0;
 const ZOOM_STEP: f32 = 0.25;
 const VIEWER_BASE_WIDTH: f32 = 960.0;
 const VIEWER_BASE_HEIGHT: f32 = 640.0;
+const LARGE_FOLDER_THRESHOLD: usize = 500;
 
 fn main() -> iced::Result {
     iced::application(ShiftPrivate::default, update, view)
@@ -171,10 +172,14 @@ fn update(state: &mut ShiftPrivate, message: Message) -> Task<Message> {
                 state.current_path = None;
                 state.current_index = None;
                 state.images_in_dir.clear();
+                state.image_info = None;
             } else {
+                let total_images = images.len();
+                let folder_status = folder_loaded_status(&folder, total_images);
                 state.images_in_dir = images;
                 state.current_folder = Some(folder);
                 set_current_image(state, 0);
+                state.status = folder_status;
             }
 
             Task::none()
@@ -513,12 +518,37 @@ fn set_current_image(state: &mut ShiftPrivate, index: usize) {
         state.current_index = Some(index);
         state.fit_to_view = true;
         state.zoom = 1.0;
-        state.status = format!("Image chargée : {}", path.display());
+        state.status = image_loaded_status(&path, index, state.images_in_dir.len());
     }
 }
 
 fn zoom_status(zoom: f32) -> String {
     format!("Zoom manuel : {:.0}%", zoom * 100.0)
+}
+
+fn image_loaded_status(path: &Path, index: usize, total: usize) -> String {
+    let file_name = path
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_else(|| path.display().to_string());
+
+    format!("Image {} / {} chargée : {}", index + 1, total, file_name)
+}
+
+fn folder_loaded_status(folder: &Path, total_images: usize) -> String {
+    let folder_name = folder
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_else(|| folder.display().to_string());
+
+    if total_images >= LARGE_FOLDER_THRESHOLD {
+        format!(
+            "Dossier {} chargé : {} images détectées. Navigation possible, vigilance sur les très gros dossiers.",
+            folder_name, total_images
+        )
+    } else {
+        format!("Dossier {} chargé : {} images détectées.", folder_name, total_images)
+    }
 }
 
 fn image_details_label(path: &Path, image_info: Option<&ImageInfo>) -> Option<String> {

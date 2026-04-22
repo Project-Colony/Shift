@@ -115,6 +115,7 @@ Implemented today:
 - [x] Quick shortcut help panel
 - [x] Cleaner status bar
 - [x] Image dimensions in metadata line
+- [x] Clearer loading/status messages for images and folders
 - [x] Visual polish on the empty state
 
 Planned next:
@@ -125,7 +126,7 @@ Planned next:
 - [ ] richer visual polish
 - [ ] metadata layout cleanup
 - [x] Basic image dimensions in metadata
-- [ ] large-folder handling
+- [~] large-folder handling (status messaging + warning tone started)
 
 ---
 
@@ -195,6 +196,7 @@ It is meant to feel personal, local, elegant, and fast, while also standing on i
 - [x] Scrollable manual exploration
 - [x] Quick in-app help panel
 - [x] Basic image dimensions in metadata
+- [x] Better image/folder loading feedback
 - [ ] Pan controls
 - [ ] Better layout and visual hierarchy
 
