@@ -741,3 +741,45 @@ fn is_supported_image(path: &Path) -> bool {
         Some("png" | "jpg" | "jpeg" | "webp" | "gif" | "bmp")
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cmp::Ordering;
+
+    #[test]
+    fn natural_sort_orders_numeric_suffixes() {
+        let left = PathBuf::from("image2.png");
+        let right = PathBuf::from("image10.png");
+
+        assert_eq!(compare_image_paths(&left, &right), Ordering::Less);
+    }
+
+    #[test]
+    fn supported_extensions_are_case_insensitive() {
+        assert!(is_supported_image(Path::new("photo.PNG")));
+        assert!(is_supported_image(Path::new("frame.WeBp")));
+        assert!(!is_supported_image(Path::new("notes.txt")));
+    }
+
+    #[test]
+    fn truncate_middle_keeps_short_values_intact() {
+        assert_eq!(truncate_middle("eve.png", 16), "eve.png");
+    }
+
+    #[test]
+    fn truncate_middle_adds_ellipsis_for_long_values() {
+        let truncated = truncate_middle("very-long-image-file-name.png", 12);
+
+        assert!(truncated.contains('…'));
+        assert!(truncated.chars().count() <= 12);
+    }
+
+    #[test]
+    fn folder_status_mentions_large_folder_warning() {
+        let label = folder_loaded_status(Path::new("/tmp/gallery"), LARGE_FOLDER_THRESHOLD);
+
+        assert!(label.contains("gallery"));
+        assert!(label.contains("vigilance"));
+    }
+}
