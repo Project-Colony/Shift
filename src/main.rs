@@ -232,29 +232,37 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
 
     let controls_bar = container(
         row![
-            button("Ouvrir").on_press(Message::OpenFile),
-            button("Dossier").on_press(Message::OpenFolder),
-            button("←").on_press_maybe(
-                state
-                    .current_index
-                    .and_then(|index| (index > 0).then_some(Message::PreviousImage))
-            ),
-            button("→").on_press_maybe(
-                state.current_index.and_then(|index| {
-                    (index + 1 < state.images_in_dir.len()).then_some(Message::NextImage)
-                })
-            ),
-            button(if state.fit_to_view { "100%" } else { "Ajuster" })
-                .on_press_maybe(state.current_path.as_ref().and(Some(if state.fit_to_view {
-                    Message::ResetZoom
-                } else {
-                    Message::ToggleFit
-                }))),
-            button(if state.fullscreen { "Fenêtre" } else { "Plein écran" })
-                .on_press_maybe(state.current_path.as_ref().map(|_| Message::ToggleFullscreen)),
+            row![
+                button("Ouvrir").on_press(Message::OpenFile),
+                button("Dossier").on_press(Message::OpenFolder),
+            ]
+            .spacing(10)
+            .wrap(),
+            row![
+                button("←").on_press_maybe(
+                    state
+                        .current_index
+                        .and_then(|index| (index > 0).then_some(Message::PreviousImage))
+                ),
+                button("→").on_press_maybe(
+                    state.current_index.and_then(|index| {
+                        (index + 1 < state.images_in_dir.len()).then_some(Message::NextImage)
+                    })
+                ),
+                button(if state.fit_to_view { "100%" } else { "Ajuster" })
+                    .on_press_maybe(state.current_path.as_ref().and(Some(if state.fit_to_view {
+                        Message::ResetZoom
+                    } else {
+                        Message::ToggleFit
+                    }))),
+                button(if state.fullscreen { "Fenêtre" } else { "Plein écran" })
+                    .on_press_maybe(state.current_path.as_ref().map(|_| Message::ToggleFullscreen)),
+            ]
+            .spacing(10)
+            .wrap(),
         ]
         .width(Length::Fill)
-        .spacing(10)
+        .spacing(18)
         .align_y(Alignment::Center)
         .wrap(),
     )
