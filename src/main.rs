@@ -259,8 +259,8 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
         }
         None => container(
             column![
-                text("Aucune image ouverte").size(28),
-                text("Ouvre une image ou un dossier pour commencer.").size(16),
+                text("Shift Private").size(34),
+                text("Un viewer calme, local, rapide.").size(16),
                 row![
                     button("Ouvrir").on_press(Message::OpenFile),
                     button("Dossier").on_press(Message::OpenFolder),
@@ -268,7 +268,7 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
                 .spacing(10)
                 .wrap(),
             ]
-            .spacing(12)
+            .spacing(14)
             .align_x(Alignment::Center),
         )
         .width(Length::Fill)
@@ -278,10 +278,12 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
         .into(),
     };
 
-    let meta_bar = container(text(viewer_meta_line(state)).size(13))
-        .width(Length::Fill)
-        .padding([6, 10])
-        .style(container::bordered_box);
+    let meta_bar = state.current_path.as_ref().map(|_| {
+        container(text(viewer_meta_line(state)).size(13))
+            .width(Length::Fill)
+            .padding([6, 10])
+            .style(container::bordered_box)
+    });
 
     let footer = container(text(&state.status).size(13))
         .width(Length::Fill)
