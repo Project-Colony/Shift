@@ -1,5 +1,5 @@
 use iced::{
-    event, keyboard, mouse,
+    event, keyboard, mouse, window,
     widget::{button, column, container, image, row, scrollable, text},
     Alignment, Element, Event, Length, Subscription, Task, Theme,
 };
@@ -34,6 +34,7 @@ struct ShiftPrivate {
     current_index: Option<usize>,
     zoom: f32,
     fit_to_view: bool,
+    fullscreen: bool,
     image_info: Option<ImageInfo>,
 }
 
@@ -47,6 +48,7 @@ impl Default for ShiftPrivate {
             current_index: None,
             zoom: 1.0,
             fit_to_view: true,
+            fullscreen: false,
             image_info: None,
         }
     }
@@ -65,6 +67,7 @@ enum Message {
     ZoomBy(f32),
     ResetZoom,
     ToggleFit,
+    ToggleFullscreen,
     EventOccurred(Event),
     FilePicked(Option<PathBuf>),
     FolderPicked(Option<PathBuf>),
@@ -146,6 +149,22 @@ fn update(state: &mut ShiftPrivate, message: Message) -> Task<Message> {
             };
             Task::none()
         }
+        Message::ToggleFullscreen => {
+            state.fullscreen = !state.fullscreen;
+            state.status = if state.fullscreen {
+                "Plein écran.".to_string()
+            } else {
+                STATUS_PLACEHOLDER.to_string()
+            };
+            window::set_mode(
+                window::Id::unique(),
+                if state.fullscreen {
+                    window::Mode::Fullscreen
+                } else {
+                    window::Mode::Windowed
+                },
+            )
+        }
         Message::FilePicked(Some(path)) => {
             let images = collect_images_in_same_dir(&path);
             let index = images.iter().position(|candidate| candidate == &path).unwrap_or(0);
@@ -222,6 +241,8 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
                 } else {
                     Message::ToggleFit
                 }))),
+            button("Plein écran")
+                .on_press_maybe(state.current_path.as_ref().map(|_| Message::ToggleFullscreen)),
         ]
         .width(Length::Fill)
         .spacing(10)
@@ -437,6 +458,9 @@ fn keyboard_action(state: &ShiftPrivate, event: &Event) -> Option<Message> {
         }
         Key::Character(character) if matches_char(character, &["1", "r"]) && state.current_path.is_some() => {
             Some(Message::ResetZoom)
+        }
+        Key::Character(character) if matches_char(character, &["m"]) && state.current_path.is_some() => {
+            Some(Message::ToggleFullscreen)
         }
         Key::Character(character) if matches_char(character, &["o"]) => Some(Message::OpenFile),
         Key::Character(character) if matches_char(character, &["d"]) => Some(Message::OpenFolder),
@@ -910,6 +934,7 @@ mod tests {
             current_index: None,
             zoom: 1.0,
             fit_to_view: true,
+            fullscreen: false,
             image_info: None,
         };
 
