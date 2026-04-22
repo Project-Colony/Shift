@@ -154,16 +154,25 @@ fn update(state: &mut ShiftPrivate, message: Message) -> Task<Message> {
             state.status = if state.fullscreen {
                 "Plein écran.".to_string()
             } else {
-                STATUS_PLACEHOLDER.to_string()
+                current_image_status(state)
             };
-            window::set_mode(
-                window::Id::unique(),
-                if state.fullscreen {
-                    window::Mode::Fullscreen
-                } else {
-                    window::Mode::Windowed
-                },
-            )
+
+            let fullscreen = state.fullscreen;
+
+            window::latest().then(move |window_id| {
+                window_id
+                    .map(|id| {
+                        window::set_mode(
+                            id,
+                            if fullscreen {
+                                window::Mode::Fullscreen
+                            } else {
+                                window::Mode::Windowed
+                            },
+                        )
+                    })
+                    .unwrap_or_else(Task::none)
+            })
         }
         Message::FilePicked(Some(path)) => {
             let images = collect_images_in_same_dir(&path);
@@ -241,7 +250,7 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
                 } else {
                     Message::ToggleFit
                 }))),
-            button("Plein écran")
+            button(if state.fullscreen { "Fenêtre" } else { "Plein écran" })
                 .on_press_maybe(state.current_path.as_ref().map(|_| Message::ToggleFullscreen)),
         ]
         .width(Length::Fill)
@@ -542,6 +551,16 @@ fn set_current_image(state: &mut ShiftPrivate, index: usize) {
 
 fn zoom_status(zoom: f32) -> String {
     format!("{:.0}%", zoom * 100.0)
+}
+
+fn current_image_status(state: &ShiftPrivate) -> String {
+    match (state.current_path.as_ref(), state.current_index) {
+        (Some(path), Some(index)) if !state.images_in_dir.is_empty() => {
+            image_loaded_status(path, index, state.images_in_dir.len())
+        }
+        (Some(path), _) => image_name_label(path, 36),
+        (None, _) => STATUS_PLACEHOLDER.to_string(),
+    }
 }
 
 fn image_loaded_status(path: &Path, index: usize, total: usize) -> String {
