@@ -3,6 +3,7 @@ use iced::{
     widget::{button, column, container, image, row, scrollable, text},
     Alignment, Element, Event, Length, Subscription, Task, Theme,
 };
+use ::image::image_dimensions;
 use rfd::FileDialog;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -32,6 +33,7 @@ struct ShiftPrivate {
     zoom: f32,
     fit_to_view: bool,
     show_help: bool,
+    image_info: Option<ImageInfo>,
 }
 
 impl Default for ShiftPrivate {
@@ -45,6 +47,7 @@ impl Default for ShiftPrivate {
             zoom: 1.0,
             fit_to_view: true,
             show_help: false,
+            image_info: None,
         }
     }
 }
@@ -377,7 +380,7 @@ fn viewer_meta_line(state: &ShiftPrivate) -> String {
     let details_label = state
         .current_path
         .as_ref()
-        .and_then(|path| image_details_label(path))
+        .and_then(|path| image_details_label(path, state.image_info.as_ref()))
         .unwrap_or_else(|| "détails indisponibles".to_string());
 
     format!("{} • {} • {} • {}", index_label, zoom_label, file_label, details_label)
@@ -505,6 +508,7 @@ async fn pick_folder() -> Option<PathBuf> {
 
 fn set_current_image(state: &mut ShiftPrivate, index: usize) {
     if let Some(path) = state.images_in_dir.get(index).cloned() {
+        state.image_info = read_image_info(&path);
         state.current_path = Some(path.clone());
         state.current_index = Some(index);
         state.fit_to_view = true;
@@ -517,8 +521,12 @@ fn zoom_status(zoom: f32) -> String {
     format!("Zoom manuel : {:.0}%", zoom * 100.0)
 }
 
-fn image_details_label(path: &Path) -> Option<String> {
+fn image_details_label(path: &Path, image_info: Option<&ImageInfo>) -> Option<String> {
     let metadata = fs::metadata(path).ok();
+
+    let dimensions_label = image_info
+        .map(|info| format!("{}×{}", info.width, info.height))
+        .unwrap_or_else(|| "dimensions inconnues".to_string());
 
     let size_label = metadata
         .as_ref()
@@ -530,7 +538,7 @@ fn image_details_label(path: &Path) -> Option<String> {
         .and_then(system_time_label)
         .unwrap_or_else(|| "date inconnue".to_string());
 
-    Some(format!("{} • {}", size_label, modified_label))
+    Some(format!("{} • {} • {}", dimensions_label, size_label, modified_label))
 }
 
 fn truncate_middle(value: &str, max_chars: usize) -> String {
@@ -556,6 +564,18 @@ fn truncate_middle(value: &str, max_chars: usize) -> String {
         .collect();
 
     format!("{}…{}", start, end)
+}
+
+#[derive(Debug, Clone)]
+struct ImageInfo {
+    width: u32,
+    height: u32,
+}
+
+fn read_image_info(path: &Path) -> Option<ImageInfo> {
+    image_dimensions(path)
+        .ok()
+        .map(|(width, height)| ImageInfo { width, height })
 }
 
 fn human_size(bytes: u64) -> String {

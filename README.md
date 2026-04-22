@@ -114,6 +114,7 @@ Implemented today:
 - [x] Scrollable manual zoom mode
 - [x] Quick shortcut help panel
 - [x] Cleaner status bar
+- [x] Image dimensions in metadata line
 - [x] Visual polish on the empty state
 
 Planned next:
@@ -123,6 +124,7 @@ Planned next:
 - [ ] smoother zoom feel
 - [ ] richer visual polish
 - [ ] metadata layout cleanup
+- [x] Basic image dimensions in metadata
 - [ ] large-folder handling
 
 ---
@@ -192,6 +194,7 @@ It is meant to feel personal, local, elegant, and fast, while also standing on i
 - [x] Keyboard-first navigation
 - [x] Scrollable manual exploration
 - [x] Quick in-app help panel
+- [x] Basic image dimensions in metadata
 - [ ] Pan controls
 - [ ] Better layout and visual hierarchy
 
