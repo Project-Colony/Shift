@@ -192,75 +192,45 @@ fn update(state: &mut ShiftPrivate, message: Message) -> Task<Message> {
 }
 
 fn view(state: &ShiftPrivate) -> Element<'_, Message> {
-    let title = text("Shift Private").size(40);
-    let subtitle = text("Viewer d’images rapide, local et élégant.").size(18);
-
     let top_bar = container(
         column![
             row![
-                column![title, subtitle].spacing(6),
+                text("Shift Private").size(28),
                 container(viewer_badge(state))
-                    .padding([10, 14])
+                    .padding([6, 10])
                     .style(container::rounded_box)
                     .align_right(Length::Shrink)
             ]
             .align_y(Alignment::Center),
             row![
-                button("Ouvrir une image").on_press(Message::OpenFile),
-                button("Ouvrir un dossier").on_press(Message::OpenFolder),
-                button("⏮ Début").on_press_maybe(
-                    state
-                        .current_index
-                        .and_then(|index| (index > 0).then_some(Message::FirstImage))
-                ),
-                button("← Précédente").on_press_maybe(
+                button("Ouvrir").on_press(Message::OpenFile),
+                button("Dossier").on_press(Message::OpenFolder),
+                button("←").on_press_maybe(
                     state
                         .current_index
                         .and_then(|index| (index > 0).then_some(Message::PreviousImage))
                 ),
-                button("Suivante →").on_press_maybe(
+                button("→").on_press_maybe(
                     state.current_index.and_then(|index| {
                         (index + 1 < state.images_in_dir.len()).then_some(Message::NextImage)
                     })
                 ),
-                button("Fin ⏭").on_press_maybe(
-                    state.current_index.and_then(|index| {
-                        (index + 1 < state.images_in_dir.len()).then_some(Message::LastImage)
-                    })
-                ),
+                button(if state.fit_to_view { "Ajuster" } else { "100%" })
+                    .on_press_maybe(state.current_path.as_ref().and(Some(if state.fit_to_view {
+                        Message::ResetZoom
+                    } else {
+                        Message::ToggleFit
+                    }))),
+                text(viewer_meta_line(state)).size(14),
             ]
-            .spacing(12)
-            .wrap(),
-            row![
-                button("− Zoom").on_press_maybe(
-                    state.current_path.as_ref().and(Some(Message::ZoomOut))
-                ),
-                button(if state.fit_to_view {
-                    "Ajusté à la fenêtre"
-                } else {
-                    "Mode manuel"
-                })
-                .on_press_maybe(state.current_path.as_ref().and(Some(Message::ToggleFit))),
-                button("100%").on_press_maybe(
-                    state.current_path.as_ref().and(Some(Message::ResetZoom))
-                ),
-                button("+ Zoom").on_press_maybe(
-                    state.current_path.as_ref().and(Some(Message::ZoomIn))
-                ),
-                button(if state.show_help { "Masquer l’aide" } else { "Aide" })
-                    .on_press(Message::ToggleHelp),
-                text(viewer_meta_line(state)).size(16),
-            ]
-            .spacing(12)
+            .spacing(10)
             .align_y(Alignment::Center)
             .wrap(),
-            text(shortcuts_line(state)).size(14),
-            text(viewer_hint_line(state)).size(13),
         ]
-        .spacing(14),
+        .spacing(10),
     )
     .width(Length::Fill)
-    .padding(20)
+    .padding([14, 16])
     .style(container::bordered_box);
 
     let viewer: Element<'_, Message> = match &state.current_path {
@@ -301,18 +271,16 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
         }
         None => container(
             column![
-                text("Aucune image ouverte").size(30),
-                text("Ouvre une image seule ou charge un dossier entier.").size(17),
-                text("Navigation prévue pour rester au clavier, rapide et propre.").size(15),
+                text("Aucune image ouverte").size(28),
+                text("Ouvre une image ou un dossier pour commencer.").size(16),
                 row![
-                    button("Ouvrir une image").on_press(Message::OpenFile),
-                    button("Ouvrir un dossier").on_press(Message::OpenFolder),
+                    button("Ouvrir").on_press(Message::OpenFile),
+                    button("Dossier").on_press(Message::OpenFolder),
                 ]
-                .spacing(12)
+                .spacing(10)
                 .wrap(),
-                text("Raccourcis utiles : O pour une image, D pour un dossier, molette pour zoomer.").size(14),
             ]
-            .spacing(14)
+            .spacing(12)
             .align_x(Alignment::Center),
         )
         .width(Length::Fill)
@@ -322,29 +290,14 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
         .into(),
     };
 
-    let help_panel = state.show_help.then(|| {
-        container(
-            column![
-                text("Aide rapide").size(18),
-                text("Navigation : ←/→, N/P ou [/], Home/End pour début/fin."),
-                text("Zoom : molette, +/-, ,/. ; F ou 0 pour ajuster, R ou 1 pour 100%."),
-                text("Ouverture : O pour une image, D pour un dossier. H ou ? pour afficher cette aide."),
-            ]
-            .spacing(6),
-        )
+    let footer = container(text(&state.status).size(14))
         .width(Length::Fill)
-        .padding([12, 14])
-        .style(container::rounded_box)
-    });
-
-    let footer = container(text(&state.status).size(15))
-        .width(Length::Fill)
-        .padding([10, 14])
+        .padding([8, 12])
         .style(container::bordered_box);
 
-    let content = column![top_bar, viewer, help_panel, footer]
-        .spacing(18)
-        .padding(24)
+    let content = column![top_bar, viewer, footer]
+        .spacing(14)
+        .padding(18)
         .max_width(1280);
 
     container(content)
@@ -357,7 +310,7 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
 fn viewer_badge(state: &ShiftPrivate) -> Element<'_, Message> {
     let label = match (&state.current_index, state.images_in_dir.len()) {
         (Some(index), total) if total > 0 => format!("{} / {}", index + 1, total),
-        _ => "Prototype".to_string(),
+        _ => "Vide".to_string(),
     };
 
     text(label).size(16).into()
@@ -402,26 +355,6 @@ fn viewer_meta_line(state: &ShiftPrivate) -> String {
         "{} • {} • {} • {} • {}",
         position_label, zoom_label, folder_label, file_label, details_label
     )
-}
-
-fn shortcuts_line(state: &ShiftPrivate) -> String {
-    if state.current_path.is_some() && !state.fit_to_view {
-        "Raccourcis : ←/→, N/P ou [/], Home/End, molette ou +/- zoom (aussi ,/.), 0/F, 1/R, H aide, O, D".to_string()
-    } else if state.current_path.is_some() {
-        "Raccourcis : ←/→, N/P ou [/], Home/End début-fin, molette ou +/- zoom (aussi ,/.), 0/F, 1/R, H aide, O image, D dossier".to_string()
-    } else {
-        "Raccourcis : H aide, O image, D dossier".to_string()
-    }
-}
-
-fn viewer_hint_line(state: &ShiftPrivate) -> String {
-    if state.current_path.is_some() && !state.fit_to_view {
-        "Mode zoom manuel : fais défiler pour parcourir l’image.".to_string()
-    } else if state.current_path.is_some() {
-        "Mode ajusté : touche F pour passer vite en manuel sur une image zoomée.".to_string()
-    } else {
-        "Ouvre une image ou un dossier pour démarrer.".to_string()
-    }
 }
 
 fn viewer_width(state: &ShiftPrivate) -> Length {
