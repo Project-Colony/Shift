@@ -16,6 +16,7 @@ const ZOOM_STEP: f32 = 0.25;
 const VIEWER_BASE_WIDTH: f32 = 960.0;
 const VIEWER_BASE_HEIGHT: f32 = 640.0;
 const LARGE_FOLDER_THRESHOLD: usize = 500;
+const STATUS_PLACEHOLDER: &str = "—";
 
 fn main() -> iced::Result {
     iced::application(ShiftPrivate::default, update, view)
@@ -39,7 +40,7 @@ struct ShiftPrivate {
 impl Default for ShiftPrivate {
     fn default() -> Self {
         Self {
-            status: "Prototype viewer prêt.".to_string(),
+            status: STATUS_PLACEHOLDER.to_string(),
             current_path: None,
             current_folder: None,
             images_in_dir: Vec::new(),
@@ -186,7 +187,11 @@ fn update(state: &mut ShiftPrivate, message: Message) -> Task<Message> {
             Task::none()
         }
         Message::FolderPicked(None) => {
-            state.status = "Ouverture de dossier annulée.".to_string();
+            state.status = if state.current_path.is_some() {
+                "Ouverture de dossier annulée.".to_string()
+            } else {
+                STATUS_PLACEHOLDER.to_string()
+            };
             Task::none()
         }
     }
@@ -769,5 +774,24 @@ mod tests {
         }
 
         assert_eq!(state.status, "Aucune image ouverte.");
+    }
+
+    #[test]
+    fn default_status_is_neutral() {
+        let state = ShiftPrivate::default();
+        assert_eq!(state.status, STATUS_PLACEHOLDER);
+    }
+
+    #[test]
+    fn cancelling_folder_pick_keeps_neutral_status_when_empty() {
+        let mut state = ShiftPrivate::default();
+
+        state.status = if state.current_path.is_some() {
+            "Ouverture de dossier annulée.".to_string()
+        } else {
+            STATUS_PLACEHOLDER.to_string()
+        };
+
+        assert_eq!(state.status, STATUS_PLACEHOLDER);
     }
 }
