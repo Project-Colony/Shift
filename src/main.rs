@@ -291,10 +291,12 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
             .style(container::bordered_box)
     });
 
-    let footer = container(text(&state.status).size(13))
-        .width(Length::Fill)
-        .padding([6, 10])
-        .style(container::bordered_box);
+    let footer = (state.status != STATUS_PLACEHOLDER).then(|| {
+        container(text(&state.status).size(13))
+            .width(Length::Fill)
+            .padding([6, 10])
+            .style(container::bordered_box)
+    });
 
     let content = column![controls_bar, viewer, meta_bar, footer]
         .spacing(10)
@@ -802,5 +804,12 @@ mod tests {
         };
 
         assert_eq!(state.status, STATUS_PLACEHOLDER);
+    }
+
+    #[test]
+    fn neutral_status_keeps_footer_hidden() {
+        let state = ShiftPrivate::default();
+        assert_eq!(state.status, STATUS_PLACEHOLDER);
+        assert!(state.status == STATUS_PLACEHOLDER);
     }
 }
