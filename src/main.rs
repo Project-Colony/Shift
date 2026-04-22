@@ -167,7 +167,11 @@ fn update(state: &mut ShiftPrivate, message: Message) -> Task<Message> {
             Task::none()
         }
         Message::FilePicked(None) => {
-            state.status = "Sélection annulée.".to_string();
+            if state.current_path.is_none() {
+                state.status = "Aucune image ouverte.".to_string();
+            } else {
+                state.status = "Sélection annulée.".to_string();
+            }
             Task::none()
         }
         Message::FolderPicked(Some(folder)) => {
@@ -180,6 +184,8 @@ fn update(state: &mut ShiftPrivate, message: Message) -> Task<Message> {
                 state.current_index = None;
                 state.images_in_dir.clear();
                 state.image_info = None;
+                state.fit_to_view = true;
+                state.zoom = 1.0;
             } else {
                 let total_images = images.len();
                 let folder_status = folder_loaded_status(&folder, total_images);
@@ -736,5 +742,45 @@ mod tests {
         assert_eq!(zoom_step_for_delta(0.5), ZOOM_STEP);
         assert_eq!(zoom_step_for_delta(3.0), ZOOM_STEP * 1.5);
         assert_eq!(zoom_step_for_delta(10.0), ZOOM_STEP * 2.0);
+    }
+
+    #[test]
+    fn empty_folder_resets_viewer_state() {
+        let mut state = ShiftPrivate {
+            current_path: Some(PathBuf::from("image1.png")),
+            current_index: Some(0),
+            images_in_dir: vec![PathBuf::from("image1.png")],
+            fit_to_view: false,
+            zoom: 3.0,
+            image_info: Some(ImageInfo { width: 800, height: 600 }),
+            ..ShiftPrivate::default()
+        };
+
+        state.current_path = None;
+        state.current_index = None;
+        state.images_in_dir.clear();
+        state.image_info = None;
+        state.fit_to_view = true;
+        state.zoom = 1.0;
+
+        assert!(state.current_path.is_none());
+        assert!(state.current_index.is_none());
+        assert!(state.images_in_dir.is_empty());
+        assert!(state.image_info.is_none());
+        assert!(state.fit_to_view);
+        assert_eq!(state.zoom, 1.0);
+    }
+
+    #[test]
+    fn cancelling_file_pick_keeps_empty_state_message() {
+        let mut state = ShiftPrivate::default();
+
+        if state.current_path.is_none() {
+            state.status = "Aucune image ouverte.".to_string();
+        } else {
+            state.status = "Sélection annulée.".to_string();
+        }
+
+        assert_eq!(state.status, "Aucune image ouverte.");
     }
 }
