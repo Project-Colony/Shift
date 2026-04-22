@@ -177,11 +177,13 @@ fn update(state: &mut ShiftPrivate, message: Message) -> Task<Message> {
                 state.zoom = 1.0;
             } else {
                 let total_images = images.len();
-                let folder_status = folder_loaded_status(&folder, total_images);
                 state.images_in_dir = images;
-                state.current_folder = Some(folder);
+                state.current_folder = Some(folder.clone());
                 set_current_image(state, 0);
-                state.status = folder_status;
+
+                if state.current_path.is_some() {
+                    state.status = folder_loaded_status(&folder, total_images);
+                }
             }
 
             Task::none()
@@ -895,5 +897,25 @@ mod tests {
 
         assert_eq!(fit_base_width(&info), 320.0);
         assert_eq!(fit_base_height(&info), VIEWER_BASE_HEIGHT);
+    }
+
+    #[test]
+    fn unreadable_image_status_is_not_overwritten_by_folder_status() {
+        let mut state = ShiftPrivate {
+            status: "Impossible de lire cassée.png".to_string(),
+            current_path: None,
+            current_folder: Some(PathBuf::from("/tmp")),
+            images_in_dir: vec![PathBuf::from("cassée.png")],
+            current_index: None,
+            zoom: 1.0,
+            fit_to_view: true,
+            image_info: None,
+        };
+
+        if state.current_path.is_some() {
+            state.status = folder_loaded_status(Path::new("/tmp"), 1);
+        }
+
+        assert_eq!(state.status, "Impossible de lire cassée.png");
     }
 }
