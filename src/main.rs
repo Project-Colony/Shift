@@ -229,6 +229,9 @@ fn update(state: &mut ShiftPrivate, message: Message) -> Task<Message> {
 
 fn view(state: &ShiftPrivate) -> Element<'_, Message> {
     let has_image = state.current_path.is_some();
+    let show_controls_bar = !state.fullscreen || !has_image;
+    let show_meta_bar = has_image && !state.fullscreen;
+    let show_footer = state.status != STATUS_PLACEHOLDER && !state.fullscreen;
 
     let controls_bar = container(
         row![
@@ -327,24 +330,24 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
         .into(),
     };
 
-    let meta_bar = state.current_path.as_ref().map(|_| {
+    let meta_bar = show_meta_bar.then(|| {
         container(text(viewer_meta_line(state)).size(13))
             .width(Length::Fill)
             .padding([6, 10])
             .style(container::bordered_box)
     });
 
-    let footer = (state.status != STATUS_PLACEHOLDER).then(|| {
+    let footer = show_footer.then(|| {
         container(text(&state.status).size(13))
             .width(Length::Fill)
             .padding([6, 10])
             .style(container::bordered_box)
     });
 
-    let content = column![controls_bar, viewer, meta_bar, footer]
-        .spacing(if has_image { 10 } else { 8 })
-        .padding(if has_image { 14 } else { 10 })
-        .max_width(1280);
+    let content = column![show_controls_bar.then_some(controls_bar), viewer, meta_bar, footer]
+        .spacing(if has_image && !state.fullscreen { 10 } else { 0 })
+        .padding(if has_image && !state.fullscreen { 14 } else { 0 })
+        .max_width(if state.fullscreen { f32::INFINITY } else { 1280.0 });
 
     container(content)
         .width(Length::Fill)
