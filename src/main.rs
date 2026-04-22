@@ -473,13 +473,12 @@ fn folder_loaded_status(folder: &Path, total_images: usize) -> String {
         .map(|name| name.to_string_lossy().into_owned())
         .unwrap_or_else(|| folder.display().to_string());
 
+    let folder_label = truncate_middle(&folder_name, 28);
+
     if total_images >= LARGE_FOLDER_THRESHOLD {
-        format!(
-            "Dossier {} chargé : {} images détectées. Navigation possible, vigilance sur les très gros dossiers.",
-            folder_name, total_images
-        )
+        format!("{} • {} images • dossier dense", folder_label, total_images)
     } else {
-        format!("Dossier {} chargé : {} images détectées.", folder_name, total_images)
+        format!("{} • {} images", folder_label, total_images)
     }
 }
 
@@ -705,11 +704,21 @@ mod tests {
     }
 
     #[test]
-    fn folder_status_mentions_large_folder_warning() {
+    fn folder_status_mentions_dense_folder() {
         let label = folder_loaded_status(Path::new("/tmp/gallery"), LARGE_FOLDER_THRESHOLD);
 
         assert!(label.contains("gallery"));
-        assert!(label.contains("vigilance"));
+        assert!(label.contains("dossier dense"));
+    }
+
+    #[test]
+    fn folder_status_truncates_long_folder_name() {
+        let label = folder_loaded_status(
+            Path::new("/tmp/un_dossier_avec_un_nom_vraiment_beaucoup_trop_long_pour_le_footer"),
+            12,
+        );
+
+        assert!(label.contains('…'));
     }
 
     #[test]
