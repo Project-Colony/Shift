@@ -442,9 +442,18 @@ fn set_current_image(state: &mut ShiftPrivate, index: usize) {
         let keep_manual_zoom = state.current_path.is_some() && !state.fit_to_view;
         let current_zoom = state.zoom;
 
-        state.image_info = read_image_info(&path);
         state.current_path = Some(path.clone());
         state.current_index = Some(index);
+
+        let image_info = read_image_info(&path);
+
+        if image_info.is_none() {
+            state.image_info = None;
+            state.status = format!("Impossible de lire {}", image_name_label(&path, 36));
+            return;
+        }
+
+        state.image_info = image_info;
 
         if keep_manual_zoom {
             state.fit_to_view = false;
@@ -463,12 +472,13 @@ fn zoom_status(zoom: f32) -> String {
 }
 
 fn image_loaded_status(path: &Path, index: usize, total: usize) -> String {
-    let file_name = path
-        .file_name()
-        .map(|name| truncate_middle(&name.to_string_lossy(), 36))
-        .unwrap_or_else(|| path.display().to_string());
+    format!("{} / {} • {}", index + 1, total, image_name_label(path, 36))
+}
 
-    format!("{} / {} • {}", index + 1, total, file_name)
+fn image_name_label(path: &Path, max_chars: usize) -> String {
+    path.file_name()
+        .map(|name| truncate_middle(&name.to_string_lossy(), max_chars))
+        .unwrap_or_else(|| path.display().to_string())
 }
 
 fn folder_loaded_status(folder: &Path, total_images: usize) -> String {
@@ -531,7 +541,7 @@ fn truncate_middle(value: &str, max_chars: usize) -> String {
     format!("{}…{}", start, end)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct ImageInfo {
     width: u32,
     height: u32,
@@ -813,5 +823,15 @@ mod tests {
         let state = ShiftPrivate::default();
         assert_eq!(state.status, STATUS_PLACEHOLDER);
         assert!(state.status == STATUS_PLACEHOLDER);
+    }
+
+    #[test]
+    fn image_name_label_truncates_long_file_names() {
+        let label = image_name_label(
+            Path::new("/tmp/un_nom_d_image_vraiment_beaucoup_trop_long_pour_le_footer.png"),
+            20,
+        );
+
+        assert!(label.contains('…'));
     }
 }
