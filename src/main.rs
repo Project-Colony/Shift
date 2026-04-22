@@ -63,6 +63,7 @@ enum Message {
     LastImage,
     ZoomIn,
     ZoomOut,
+    ZoomBy(f32),
     ResetZoom,
     ToggleFit,
     ToggleHelp,
@@ -123,6 +124,12 @@ fn update(state: &mut ShiftPrivate, message: Message) -> Task<Message> {
         Message::ZoomOut => {
             state.fit_to_view = false;
             state.zoom = (state.zoom - ZOOM_STEP).max(MIN_ZOOM);
+            state.status = zoom_status(state.zoom);
+            Task::none()
+        }
+        Message::ZoomBy(delta) => {
+            state.fit_to_view = false;
+            state.zoom = (state.zoom + delta).clamp(MIN_ZOOM, MAX_ZOOM);
             state.status = zoom_status(state.zoom);
             Task::none()
         }
@@ -405,12 +412,16 @@ fn mouse_action(state: &ShiftPrivate, event: &Event) -> Option<Message> {
         mouse::ScrollDelta::Pixels { y, .. } => *y,
     };
 
+    if vertical.abs() < f32::EPSILON {
+        return None;
+    }
+
+    let step = zoom_step_for_delta(vertical);
+
     if vertical > 0.0 {
-        Some(Message::ZoomIn)
-    } else if vertical < 0.0 {
-        Some(Message::ZoomOut)
+        Some(Message::ZoomBy(step))
     } else {
-        None
+        Some(Message::ZoomBy(-step))
     }
 }
 
@@ -529,6 +540,16 @@ fn read_image_info(path: &Path) -> Option<ImageInfo> {
     image_dimensions(path)
         .ok()
         .map(|(width, height)| ImageInfo { width, height })
+}
+
+fn zoom_step_for_delta(vertical_delta: f32) -> f32 {
+    if vertical_delta.abs() >= 8.0 {
+        ZOOM_STEP * 2.0
+    } else if vertical_delta.abs() >= 2.0 {
+        ZOOM_STEP * 1.5
+    } else {
+        ZOOM_STEP
+    }
 }
 
 fn human_size(bytes: u64) -> String {
@@ -708,5 +729,12 @@ mod tests {
         assert!(!state.fit_to_view);
         assert_eq!(state.zoom, 2.5);
         assert_eq!(state.current_index, Some(1));
+    }
+
+    #[test]
+    fn zoom_step_scales_with_scroll_strength() {
+        assert_eq!(zoom_step_for_delta(0.5), ZOOM_STEP);
+        assert_eq!(zoom_step_for_delta(3.0), ZOOM_STEP * 1.5);
+        assert_eq!(zoom_step_for_delta(10.0), ZOOM_STEP * 2.0);
     }
 }
