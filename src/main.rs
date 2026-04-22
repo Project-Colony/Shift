@@ -198,6 +198,8 @@ fn update(state: &mut ShiftPrivate, message: Message) -> Task<Message> {
 }
 
 fn view(state: &ShiftPrivate) -> Element<'_, Message> {
+    let has_image = state.current_path.is_some();
+
     let controls_bar = container(
         row![
             button("Ouvrir").on_press(Message::OpenFile),
@@ -299,8 +301,8 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
     });
 
     let content = column![controls_bar, viewer, meta_bar, footer]
-        .spacing(10)
-        .padding(14)
+        .spacing(if has_image { 10 } else { 8 })
+        .padding(if has_image { 14 } else { 10 })
         .max_width(1280);
 
     container(content)
