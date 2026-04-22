@@ -33,7 +33,6 @@ struct ShiftPrivate {
     current_index: Option<usize>,
     zoom: f32,
     fit_to_view: bool,
-    show_help: bool,
     image_info: Option<ImageInfo>,
 }
 
@@ -47,7 +46,6 @@ impl Default for ShiftPrivate {
             current_index: None,
             zoom: 1.0,
             fit_to_view: true,
-            show_help: false,
             image_info: None,
         }
     }
@@ -66,7 +64,6 @@ enum Message {
     ZoomBy(f32),
     ResetZoom,
     ToggleFit,
-    ToggleHelp,
     EventOccurred(Event),
     FilePicked(Option<PathBuf>),
     FolderPicked(Option<PathBuf>),
@@ -145,15 +142,6 @@ fn update(state: &mut ShiftPrivate, message: Message) -> Task<Message> {
                 "Mode ajusté.".to_string()
             } else {
                 zoom_status(state.zoom)
-            };
-            Task::none()
-        }
-        Message::ToggleHelp => {
-            state.show_help = !state.show_help;
-            state.status = if state.show_help {
-                "Aide rapide affichée.".to_string()
-            } else {
-                "Aide rapide masquée.".to_string()
             };
             Task::none()
         }
@@ -392,7 +380,6 @@ fn keyboard_action(state: &ShiftPrivate, event: &Event) -> Option<Message> {
         Key::Character(character) if matches_char(character, &["1", "r"]) && state.current_path.is_some() => {
             Some(Message::ResetZoom)
         }
-        Key::Character(character) if matches_char(character, &["h", "?"]) => Some(Message::ToggleHelp),
         Key::Character(character) if matches_char(character, &["o"]) => Some(Message::OpenFile),
         Key::Character(character) if matches_char(character, &["d"]) => Some(Message::OpenFolder),
         _ => None,
