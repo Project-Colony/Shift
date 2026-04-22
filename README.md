@@ -112,6 +112,7 @@ Implemented today:
 - [x] Basic fit / zoom controls
 - [x] Mouse wheel zoom
 - [x] Scrollable manual zoom mode
+- [x] Quick shortcut help panel
 - [x] Cleaner status bar
 - [x] Visual polish on the empty state
 
@@ -190,6 +191,7 @@ It is meant to feel personal, local, elegant, and fast, while also standing on i
 - [x] Zoom controls
 - [x] Keyboard-first navigation
 - [x] Scrollable manual exploration
+- [x] Quick in-app help panel
 - [ ] Pan controls
 - [ ] Better layout and visual hierarchy
 

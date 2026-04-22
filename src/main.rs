@@ -31,6 +31,7 @@ struct ShiftPrivate {
     current_index: Option<usize>,
     zoom: f32,
     fit_to_view: bool,
+    show_help: bool,
 }
 
 impl Default for ShiftPrivate {
@@ -43,6 +44,7 @@ impl Default for ShiftPrivate {
             current_index: None,
             zoom: 1.0,
             fit_to_view: true,
+            show_help: false,
         }
     }
 }
@@ -59,6 +61,7 @@ enum Message {
     ZoomOut,
     ResetZoom,
     ToggleFit,
+    ToggleHelp,
     EventOccurred(Event),
     FilePicked(Option<PathBuf>),
     FolderPicked(Option<PathBuf>),
@@ -131,6 +134,15 @@ fn update(state: &mut ShiftPrivate, message: Message) -> Task<Message> {
                 "Mode ajusté à la fenêtre activé.".to_string()
             } else {
                 zoom_status(state.zoom)
+            };
+            Task::none()
+        }
+        Message::ToggleHelp => {
+            state.show_help = !state.show_help;
+            state.status = if state.show_help {
+                "Aide rapide affichée.".to_string()
+            } else {
+                "Aide rapide masquée.".to_string()
             };
             Task::none()
         }
@@ -227,6 +239,8 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
                 button("+ Zoom").on_press_maybe(
                     state.current_path.as_ref().and(Some(Message::ZoomIn))
                 ),
+                button(if state.show_help { "Masquer l’aide" } else { "Aide" })
+                    .on_press(Message::ToggleHelp),
                 text(viewer_meta_line(state)).size(16),
             ]
             .spacing(12)
@@ -300,12 +314,27 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
         .into(),
     };
 
+    let help_panel = state.show_help.then(|| {
+        container(
+            column![
+                text("Aide rapide").size(18),
+                text("Navigation : ←/→, N/P ou [/], Home/End pour début/fin."),
+                text("Zoom : molette, +/-, ,/. ; F ou 0 pour ajuster, R ou 1 pour 100%."),
+                text("Ouverture : O pour une image, D pour un dossier. H ou ? pour afficher cette aide."),
+            ]
+            .spacing(6),
+        )
+        .width(Length::Fill)
+        .padding([12, 14])
+        .style(container::rounded_box)
+    });
+
     let footer = container(text(&state.status).size(15))
         .width(Length::Fill)
         .padding([10, 14])
         .style(container::bordered_box);
 
-    let content = column![top_bar, viewer, footer]
+    let content = column![top_bar, viewer, help_panel, footer]
         .spacing(18)
         .padding(24)
         .max_width(1280);
@@ -356,11 +385,11 @@ fn viewer_meta_line(state: &ShiftPrivate) -> String {
 
 fn shortcuts_line(state: &ShiftPrivate) -> String {
     if state.current_path.is_some() && !state.fit_to_view {
-        "Raccourcis : ←/→, N/P ou [/], Home/End, molette ou +/- zoom (aussi ,/.), 0/F, 1/R, O, D".to_string()
+        "Raccourcis : ←/→, N/P ou [/], Home/End, molette ou +/- zoom (aussi ,/.), 0/F, 1/R, H aide, O, D".to_string()
     } else if state.current_path.is_some() {
-        "Raccourcis : ←/→, N/P ou [/], Home/End début-fin, molette ou +/- zoom (aussi ,/.), 0/F, 1/R, O image, D dossier".to_string()
+        "Raccourcis : ←/→, N/P ou [/], Home/End début-fin, molette ou +/- zoom (aussi ,/.), 0/F, 1/R, H aide, O image, D dossier".to_string()
     } else {
-        "Raccourcis : O image, D dossier".to_string()
+        "Raccourcis : H aide, O image, D dossier".to_string()
     }
 }
 
@@ -429,6 +458,7 @@ fn keyboard_action(state: &ShiftPrivate, event: &Event) -> Option<Message> {
         Key::Character(character) if matches_char(character, &["1", "r"]) && state.current_path.is_some() => {
             Some(Message::ResetZoom)
         }
+        Key::Character(character) if matches_char(character, &["h", "?"]) => Some(Message::ToggleHelp),
         Key::Character(character) if matches_char(character, &["o"]) => Some(Message::OpenFile),
         Key::Character(character) if matches_char(character, &["d"]) => Some(Message::OpenFolder),
         _ => None,
