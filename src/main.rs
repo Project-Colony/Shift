@@ -192,45 +192,33 @@ fn update(state: &mut ShiftPrivate, message: Message) -> Task<Message> {
 }
 
 fn view(state: &ShiftPrivate) -> Element<'_, Message> {
-    let top_bar = container(
-        column![
-            row![
-                text("Shift Private").size(28),
-                container(viewer_badge(state))
-                    .padding([6, 10])
-                    .style(container::rounded_box)
-                    .align_right(Length::Shrink)
-            ]
-            .align_y(Alignment::Center),
-            row![
-                button("Ouvrir").on_press(Message::OpenFile),
-                button("Dossier").on_press(Message::OpenFolder),
-                button("←").on_press_maybe(
-                    state
-                        .current_index
-                        .and_then(|index| (index > 0).then_some(Message::PreviousImage))
-                ),
-                button("→").on_press_maybe(
-                    state.current_index.and_then(|index| {
-                        (index + 1 < state.images_in_dir.len()).then_some(Message::NextImage)
-                    })
-                ),
-                button(if state.fit_to_view { "100%" } else { "Ajuster" })
-                    .on_press_maybe(state.current_path.as_ref().and(Some(if state.fit_to_view {
-                        Message::ResetZoom
-                    } else {
-                        Message::ToggleFit
-                    }))),
-                text(viewer_meta_line(state)).size(13),
-            ]
-            .spacing(10)
-            .align_y(Alignment::Center)
-            .wrap(),
+    let controls_bar = container(
+        row![
+            button("Ouvrir").on_press(Message::OpenFile),
+            button("Dossier").on_press(Message::OpenFolder),
+            button("←").on_press_maybe(
+                state
+                    .current_index
+                    .and_then(|index| (index > 0).then_some(Message::PreviousImage))
+            ),
+            button("→").on_press_maybe(
+                state.current_index.and_then(|index| {
+                    (index + 1 < state.images_in_dir.len()).then_some(Message::NextImage)
+                })
+            ),
+            button(if state.fit_to_view { "100%" } else { "Ajuster" })
+                .on_press_maybe(state.current_path.as_ref().and(Some(if state.fit_to_view {
+                    Message::ResetZoom
+                } else {
+                    Message::ToggleFit
+                }))),
         ]
-        .spacing(10),
+        .spacing(10)
+        .align_y(Alignment::Center)
+        .wrap(),
     )
     .width(Length::Fill)
-    .padding([14, 16])
+    .padding([10, 12])
     .style(container::bordered_box);
 
     let viewer: Element<'_, Message> = match &state.current_path {
@@ -290,14 +278,19 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
         .into(),
     };
 
-    let footer = container(text(&state.status).size(14))
+    let meta_bar = container(text(viewer_meta_line(state)).size(13))
         .width(Length::Fill)
-        .padding([8, 12])
+        .padding([6, 10])
         .style(container::bordered_box);
 
-    let content = column![top_bar, viewer, footer]
-        .spacing(14)
-        .padding(18)
+    let footer = container(text(&state.status).size(13))
+        .width(Length::Fill)
+        .padding([6, 10])
+        .style(container::bordered_box);
+
+    let content = column![controls_bar, viewer, meta_bar, footer]
+        .spacing(10)
+        .padding(14)
         .max_width(1280);
 
     container(content)
@@ -305,15 +298,6 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
         .height(Length::Fill)
         .center_x(Length::Fill)
         .into()
-}
-
-fn viewer_badge(state: &ShiftPrivate) -> Element<'_, Message> {
-    let label = match (&state.current_index, state.images_in_dir.len()) {
-        (Some(index), total) if total > 0 => format!("{} / {}", index + 1, total),
-        _ => "Vide".to_string(),
-    };
-
-    text(label).size(16).into()
 }
 
 fn viewer_meta_line(state: &ShiftPrivate) -> String {
