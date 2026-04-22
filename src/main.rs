@@ -370,16 +370,26 @@ fn viewer_meta_line(state: &ShiftPrivate) -> String {
         format!("{:.0}%", state.zoom * 100.0)
     };
 
-    let index_label = match (state.current_index, state.images_in_dir.is_empty()) {
-        (Some(index), false) => format!("{} / {}", index + 1, state.images_in_dir.len()),
+    let position_label = match (state.current_index, state.images_in_dir.is_empty()) {
+        (Some(index), false) => format!("Image {} / {}", index + 1, state.images_in_dir.len()),
         _ => "Aucune image".to_string(),
     };
+
+    let folder_label = state
+        .current_folder
+        .as_ref()
+        .map(|path| {
+            path.file_name()
+                .map(|name| truncate_middle(&name.to_string_lossy(), 24))
+                .unwrap_or_else(|| truncate_middle(&path.display().to_string(), 24))
+        })
+        .unwrap_or_else(|| "dossier inconnu".to_string());
 
     let file_label = state
         .current_path
         .as_ref()
         .and_then(|path| path.file_name())
-        .map(|name| truncate_middle(&name.to_string_lossy(), 42))
+        .map(|name| truncate_middle(&name.to_string_lossy(), 32))
         .unwrap_or_else(|| "Aucun fichier chargé".to_string());
 
     let details_label = state
@@ -388,7 +398,10 @@ fn viewer_meta_line(state: &ShiftPrivate) -> String {
         .and_then(|path| image_details_label(path, state.image_info.as_ref()))
         .unwrap_or_else(|| "détails indisponibles".to_string());
 
-    format!("{} • {} • {} • {}", index_label, zoom_label, file_label, details_label)
+    format!(
+        "{} • {} • {} • {} • {}",
+        position_label, zoom_label, folder_label, file_label, details_label
+    )
 }
 
 fn shortcuts_line(state: &ShiftPrivate) -> String {

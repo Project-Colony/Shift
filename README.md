@@ -124,7 +124,7 @@ Planned next:
 - [ ] smarter fit-to-viewport behavior
 - [ ] smoother zoom feel
 - [ ] richer visual polish
-- [ ] metadata layout cleanup
+- [~] metadata layout cleanup (position/dossier/fichier séparés)
 - [x] Basic image dimensions in metadata
 - [~] large-folder handling (status messaging + warning tone started)
 
@@ -197,6 +197,7 @@ It is meant to feel personal, local, elegant, and fast, while also standing on i
 - [x] Quick in-app help panel
 - [x] Basic image dimensions in metadata
 - [x] Better image/folder loading feedback
+- [x] Clearer metadata hierarchy
 - [ ] Pan controls
 - [ ] Better layout and visual hierarchy
 
