@@ -142,7 +142,7 @@ fn update(state: &mut ShiftPrivate, message: Message) -> Task<Message> {
         Message::ToggleFit => {
             state.fit_to_view = !state.fit_to_view;
             state.status = if state.fit_to_view {
-                "Mode ajusté à la fenêtre activé.".to_string()
+                "Mode ajusté.".to_string()
             } else {
                 zoom_status(state.zoom)
             };
@@ -246,12 +246,12 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
                     .height(Length::Fill)
                     .center_x(Length::Fill)
                     .center_y(Length::Fill)
-                    .padding(24)
+                    .padding(12)
                     .into()
             } else {
                 scrollable(
                     container(image_widget)
-                        .padding(24)
+                        .padding(12)
                         .width(Length::Shrink)
                         .height(Length::Shrink),
                 )
@@ -463,7 +463,7 @@ fn set_current_image(state: &mut ShiftPrivate, index: usize) {
 }
 
 fn zoom_status(zoom: f32) -> String {
-    format!("Zoom manuel : {:.0}%", zoom * 100.0)
+    format!("{:.0}%", zoom * 100.0)
 }
 
 fn image_loaded_status(path: &Path, index: usize, total: usize) -> String {
