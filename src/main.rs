@@ -426,11 +426,21 @@ async fn pick_folder() -> Option<PathBuf> {
 
 fn set_current_image(state: &mut ShiftPrivate, index: usize) {
     if let Some(path) = state.images_in_dir.get(index).cloned() {
+        let keep_manual_zoom = state.current_path.is_some() && !state.fit_to_view;
+        let current_zoom = state.zoom;
+
         state.image_info = read_image_info(&path);
         state.current_path = Some(path.clone());
         state.current_index = Some(index);
-        state.fit_to_view = true;
-        state.zoom = 1.0;
+
+        if keep_manual_zoom {
+            state.fit_to_view = false;
+            state.zoom = current_zoom;
+        } else {
+            state.fit_to_view = true;
+            state.zoom = 1.0;
+        }
+
         state.status = image_loaded_status(&path, index, state.images_in_dir.len());
     }
 }
@@ -442,10 +452,10 @@ fn zoom_status(zoom: f32) -> String {
 fn image_loaded_status(path: &Path, index: usize, total: usize) -> String {
     let file_name = path
         .file_name()
-        .map(|name| name.to_string_lossy().into_owned())
+        .map(|name| truncate_middle(&name.to_string_lossy(), 36))
         .unwrap_or_else(|| path.display().to_string());
 
-    format!("Image {} / {} chargée : {}", index + 1, total, file_name)
+    format!("{} / {} • {}", index + 1, total, file_name)
 }
 
 fn folder_loaded_status(folder: &Path, total_images: usize) -> String {
@@ -681,5 +691,22 @@ mod tests {
 
         assert!(label.contains("gallery"));
         assert!(label.contains("vigilance"));
+    }
+
+    #[test]
+    fn manual_zoom_is_preserved_when_switching_images() {
+        let mut state = ShiftPrivate {
+            current_path: Some(PathBuf::from("image1.png")),
+            images_in_dir: vec![PathBuf::from("image1.png"), PathBuf::from("image2.png")],
+            fit_to_view: false,
+            zoom: 2.5,
+            ..ShiftPrivate::default()
+        };
+
+        set_current_image(&mut state, 1);
+
+        assert!(!state.fit_to_view);
+        assert_eq!(state.zoom, 2.5);
+        assert_eq!(state.current_index, Some(1));
     }
 }
