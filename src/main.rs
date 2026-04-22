@@ -223,6 +223,7 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
                     Message::ToggleFit
                 }))),
         ]
+        .width(Length::Fill)
         .spacing(10)
         .align_y(Alignment::Center)
         .wrap(),
