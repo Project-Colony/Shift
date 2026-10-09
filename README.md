@@ -50,6 +50,8 @@ cd Shift
 cargo run --release
 ```
 
+The binary is built as `target/release/shift` (`shift.exe` on Windows). `shift --version` prints the version and exits without opening a window.
+
 ## License
 
 Shift is licensed under the [GNU General Public License v3.0 or later](LICENSE).
