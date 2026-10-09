@@ -1,6 +1,7 @@
 use ::image::image_dimensions;
 use iced::{
-    Alignment, Element, Event, Length, Subscription, Task, Theme, event, keyboard, mouse,
+    Alignment, ContentFit, Element, Event, Length, Subscription, Task, Theme, event, keyboard,
+    mouse,
     widget::{button, column, container, image, row, scrollable, text},
     window,
 };
@@ -210,9 +211,8 @@ fn update(state: &mut ShiftPrivate, message: Message) -> Task<Message> {
                 let total_images = images.len();
                 state.images_in_dir = images;
                 state.current_folder = Some(folder.clone());
-                set_current_image(state, 0);
 
-                if state.current_path.is_some() {
+                if set_current_image(state, 0) {
                     state.status = folder_loaded_status(&folder, total_images);
                 }
             }
@@ -234,7 +234,7 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
     let has_image = state.current_path.is_some();
     let show_controls_bar = !state.fullscreen || !has_image;
     let show_meta_bar = has_image && !state.fullscreen;
-    let show_footer = state.status != STATUS_PLACEHOLDER && !state.fullscreen;
+    let show_footer = footer_visible(state);
 
     let controls_bar = container(
         row![
@@ -288,7 +288,12 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
         Some(path) => {
             let image_widget = image(path.clone())
                 .width(viewer_width(state))
-                .height(viewer_height(state));
+                .height(viewer_height(state))
+                .content_fit(if state.fit_to_view {
+                    ContentFit::ScaleDown
+                } else {
+                    ContentFit::Contain
+                });
 
             let framed_viewer: Element<'_, Message> = if state.fit_to_view {
                 container(image_widget)
@@ -371,7 +376,9 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
     } else {
         0
     })
-    .max_width(if state.fullscreen {
+    // An open image gets the whole window so fit mode can use all of it; the
+    // cap only keeps the empty start screen compact.
+    .max_width(if has_image || state.fullscreen {
         f32::INFINITY
     } else {
         1280.0
@@ -382,6 +389,10 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
         .height(Length::Fill)
         .center_x(Length::Fill)
         .into()
+}
+
+fn footer_visible(state: &ShiftPrivate) -> bool {
+    state.status != STATUS_PLACEHOLDER && !state.fullscreen
 }
 
 fn viewer_meta_line(state: &ShiftPrivate) -> String {
@@ -408,11 +419,7 @@ fn viewer_meta_line(state: &ShiftPrivate) -> String {
 
 fn viewer_width(state: &ShiftPrivate) -> Length {
     if state.fit_to_view {
-        state
-            .image_info
-            .as_ref()
-            .map(|info| Length::Fixed(fit_base_width(info)))
-            .unwrap_or(Length::Shrink)
+        Length::Fill
     } else {
         Length::Fixed(manual_base_width(state) * state.zoom)
     }
@@ -420,11 +427,7 @@ fn viewer_width(state: &ShiftPrivate) -> Length {
 
 fn viewer_height(state: &ShiftPrivate) -> Length {
     if state.fit_to_view {
-        state
-            .image_info
-            .as_ref()
-            .map(|info| Length::Fixed(fit_base_height(info)))
-            .unwrap_or(Length::Shrink)
+        Length::Fill
     } else {
         Length::Fixed(manual_base_height(state) * state.zoom)
     }
@@ -444,28 +447,6 @@ fn manual_base_height(state: &ShiftPrivate) -> f32 {
         .as_ref()
         .map(|info| info.height as f32)
         .unwrap_or(VIEWER_BASE_HEIGHT)
-}
-
-fn fit_base_width(info: &ImageInfo) -> f32 {
-    let width = info.width as f32;
-    let height = info.height as f32;
-
-    if width >= height {
-        VIEWER_BASE_WIDTH.min(width)
-    } else {
-        (VIEWER_BASE_HEIGHT * (width / height)).max(220.0)
-    }
-}
-
-fn fit_base_height(info: &ImageInfo) -> f32 {
-    let width = info.width as f32;
-    let height = info.height as f32;
-
-    if height > width {
-        VIEWER_BASE_HEIGHT.min(height)
-    } else {
-        (VIEWER_BASE_WIDTH * (height / width)).max(160.0)
-    }
 }
 
 fn theme(_state: &ShiftPrivate) -> Theme {
@@ -572,34 +553,41 @@ async fn pick_folder() -> Option<PathBuf> {
     FileDialog::new().pick_folder()
 }
 
-fn set_current_image(state: &mut ShiftPrivate, index: usize) {
-    if let Some(path) = state.images_in_dir.get(index).cloned() {
-        let keep_manual_zoom = state.current_path.is_some() && !state.fit_to_view;
-        let current_zoom = state.zoom;
+/// Moves to the image at `index` and returns whether it could be read.
+///
+/// An unreadable image still becomes the current one, so navigation can step
+/// past it, but the status keeps the read error.
+fn set_current_image(state: &mut ShiftPrivate, index: usize) -> bool {
+    let Some(path) = state.images_in_dir.get(index).cloned() else {
+        return false;
+    };
 
-        state.current_path = Some(path.clone());
-        state.current_index = Some(index);
+    let keep_manual_zoom = state.current_path.is_some() && !state.fit_to_view;
+    let current_zoom = state.zoom;
 
-        let image_info = read_image_info(&path);
+    state.current_path = Some(path.clone());
+    state.current_index = Some(index);
 
-        if image_info.is_none() {
-            state.image_info = None;
-            state.status = format!("Impossible de lire {}", image_name_label(&path, 36));
-            return;
-        }
+    let image_info = read_image_info(&path);
 
-        state.image_info = image_info;
-
-        if keep_manual_zoom {
-            state.fit_to_view = false;
-            state.zoom = current_zoom;
-        } else {
-            state.fit_to_view = true;
-            state.zoom = 1.0;
-        }
-
-        state.status = image_loaded_status(&path, index, state.images_in_dir.len());
+    if image_info.is_none() {
+        state.image_info = None;
+        state.status = format!("Impossible de lire {}", image_name_label(&path, 36));
+        return false;
     }
+
+    state.image_info = image_info;
+
+    if keep_manual_zoom {
+        state.fit_to_view = false;
+        state.zoom = current_zoom;
+    } else {
+        state.fit_to_view = true;
+        state.zoom = 1.0;
+    }
+
+    state.status = image_loaded_status(&path, index, state.images_in_dir.len());
+    true
 }
 
 fn zoom_status(zoom: f32) -> String {
@@ -738,17 +726,15 @@ fn system_time_label(time: SystemTime) -> Option<String> {
     Some(label)
 }
 
+/// Lists the supported images next to `path`, or only `path` itself when it
+/// is not one of them (for example a file the folder scan skips).
 fn collect_images_in_same_dir(path: &Path) -> Vec<PathBuf> {
-    let Some(parent) = path.parent() else {
-        return vec![path.to_path_buf()];
-    };
+    let images = path.parent().map(collect_images_in_dir).unwrap_or_default();
 
-    let images = collect_images_in_dir(parent);
-
-    if images.is_empty() {
-        vec![path.to_path_buf()]
-    } else {
+    if images.iter().any(|candidate| candidate == path) {
         images
+    } else {
+        vec![path.to_path_buf()]
     }
 }
 
@@ -837,6 +823,40 @@ mod tests {
     use super::*;
     use std::cmp::Ordering;
 
+    /// A scratch folder under the system temp dir, removed when dropped.
+    struct Fixture(PathBuf);
+
+    impl Fixture {
+        fn new(name: &str) -> Self {
+            let dir = std::env::temp_dir().join(format!("shift-{}-{name}", std::process::id()));
+            let _ = fs::remove_dir_all(&dir);
+            fs::create_dir_all(&dir).unwrap();
+            Self(dir)
+        }
+
+        fn png(&self, name: &str) -> PathBuf {
+            let path = self.0.join(name);
+            ::image::RgbImage::new(4, 3).save(&path).unwrap();
+            path
+        }
+
+        fn garbage(&self, name: &str) -> PathBuf {
+            let path = self.0.join(name);
+            fs::write(&path, b"not an image").unwrap();
+            path
+        }
+    }
+
+    impl Drop for Fixture {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn open_folder(state: &mut ShiftPrivate, folder: &Path) {
+        let _ = update(state, Message::FolderPicked(Some(folder.to_path_buf())));
+    }
+
     #[test]
     fn natural_sort_orders_numeric_suffixes() {
         let left = PathBuf::from("image2.png");
@@ -885,19 +905,26 @@ mod tests {
 
     #[test]
     fn manual_zoom_is_preserved_when_switching_images() {
-        let mut state = ShiftPrivate {
-            current_path: Some(PathBuf::from("image1.png")),
-            images_in_dir: vec![PathBuf::from("image1.png"), PathBuf::from("image2.png")],
-            fit_to_view: false,
-            zoom: 2.5,
-            ..ShiftPrivate::default()
-        };
+        let fixture = Fixture::new("manual-zoom");
+        fixture.png("image1.png");
+        fixture.png("image2.png");
+        let mut state = ShiftPrivate::default();
+        open_folder(&mut state, &fixture.0);
 
-        set_current_image(&mut state, 1);
+        let _ = update(&mut state, Message::ZoomBy(1.5));
+        let _ = update(&mut state, Message::NextImage);
 
+        assert_eq!(state.current_index, Some(1));
+        assert_eq!(
+            state.image_info,
+            Some(ImageInfo {
+                width: 4,
+                height: 3
+            })
+        );
         assert!(!state.fit_to_view);
         assert_eq!(state.zoom, 2.5);
-        assert_eq!(state.current_index, Some(1));
+        assert_eq!(state.status, "2 / 2 • image2.png");
     }
 
     #[test]
@@ -909,26 +936,19 @@ mod tests {
 
     #[test]
     fn empty_folder_resets_viewer_state() {
-        let mut state = ShiftPrivate {
-            current_path: Some(PathBuf::from("image1.png")),
-            current_index: Some(0),
-            images_in_dir: vec![PathBuf::from("image1.png")],
-            fit_to_view: false,
-            zoom: 3.0,
-            image_info: Some(ImageInfo {
-                width: 800,
-                height: 600,
-            }),
-            ..ShiftPrivate::default()
-        };
+        let fixture = Fixture::new("empty-folder");
+        fixture.png("image1.png");
+        let empty = fixture.0.join("empty");
+        fs::create_dir(&empty).unwrap();
+        let mut state = ShiftPrivate::default();
+        open_folder(&mut state, &fixture.0);
+        let _ = update(&mut state, Message::ZoomBy(2.0));
+        assert!(state.current_path.is_some());
 
-        state.current_path = None;
-        state.current_index = None;
-        state.images_in_dir.clear();
-        state.image_info = None;
-        state.fit_to_view = true;
-        state.zoom = 1.0;
+        open_folder(&mut state, &empty);
 
+        assert_eq!(state.current_folder, Some(empty));
+        assert!(state.status.starts_with("Aucune image trouvée"));
         assert!(state.current_path.is_none());
         assert!(state.current_index.is_none());
         assert!(state.images_in_dir.is_empty());
@@ -941,11 +961,7 @@ mod tests {
     fn cancelling_file_pick_keeps_empty_state_message() {
         let mut state = ShiftPrivate::default();
 
-        if state.current_path.is_none() {
-            state.status = "Aucune image ouverte.".to_string();
-        } else {
-            state.status = "Sélection annulée.".to_string();
-        }
+        let _ = update(&mut state, Message::FilePicked(None));
 
         assert_eq!(state.status, "Aucune image ouverte.");
     }
@@ -960,20 +976,21 @@ mod tests {
     fn cancelling_folder_pick_keeps_neutral_status_when_empty() {
         let mut state = ShiftPrivate::default();
 
-        state.status = if state.current_path.is_some() {
-            "Ouverture de dossier annulée.".to_string()
-        } else {
-            STATUS_PLACEHOLDER.to_string()
-        };
+        let _ = update(&mut state, Message::FolderPicked(None));
 
         assert_eq!(state.status, STATUS_PLACEHOLDER);
     }
 
     #[test]
     fn neutral_status_keeps_footer_hidden() {
-        let state = ShiftPrivate::default();
-        assert_eq!(state.status, STATUS_PLACEHOLDER);
-        assert!(state.status == STATUS_PLACEHOLDER);
+        let mut state = ShiftPrivate::default();
+        assert!(!footer_visible(&state));
+
+        let _ = update(&mut state, Message::FolderPicked(None));
+        assert!(!footer_visible(&state));
+
+        let _ = update(&mut state, Message::FilePicked(None));
+        assert!(footer_visible(&state));
     }
 
     #[test]
@@ -987,45 +1004,71 @@ mod tests {
     }
 
     #[test]
-    fn fit_dimensions_preserve_landscape_ratio() {
-        let info = ImageInfo {
-            width: 1600,
-            height: 900,
-        };
-
-        assert_eq!(fit_base_width(&info), VIEWER_BASE_WIDTH);
-        assert_eq!(fit_base_height(&info), 540.0);
-    }
-
-    #[test]
-    fn fit_dimensions_preserve_portrait_ratio() {
-        let info = ImageInfo {
-            width: 800,
-            height: 1600,
-        };
-
-        assert_eq!(fit_base_width(&info), 320.0);
-        assert_eq!(fit_base_height(&info), VIEWER_BASE_HEIGHT);
-    }
-
-    #[test]
     fn unreadable_image_status_is_not_overwritten_by_folder_status() {
-        let mut state = ShiftPrivate {
-            status: "Impossible de lire cassée.png".to_string(),
-            current_path: None,
-            current_folder: Some(PathBuf::from("/tmp")),
-            images_in_dir: vec![PathBuf::from("cassée.png")],
-            current_index: None,
-            zoom: 1.0,
-            fit_to_view: true,
-            fullscreen: false,
-            image_info: None,
-        };
+        let fixture = Fixture::new("unreadable-first");
+        fixture.garbage("cassée.png");
+        fixture.png("image2.png");
+        let mut state = ShiftPrivate::default();
 
-        if state.current_path.is_some() {
-            state.status = folder_loaded_status(Path::new("/tmp"), 1);
-        }
+        open_folder(&mut state, &fixture.0);
 
         assert_eq!(state.status, "Impossible de lire cassée.png");
+        assert_eq!(state.current_index, Some(0));
+        assert!(state.image_info.is_none());
+    }
+
+    #[test]
+    fn unreadable_first_image_does_not_block_navigation() {
+        let fixture = Fixture::new("unreadable-navigation");
+        fixture.garbage("cassée.png");
+        fixture.png("image2.png");
+        let mut state = ShiftPrivate::default();
+        open_folder(&mut state, &fixture.0);
+
+        let _ = update(&mut state, Message::NextImage);
+
+        assert_eq!(state.current_index, Some(1));
+        assert_eq!(state.status, "2 / 2 • image2.png");
+    }
+
+    #[test]
+    fn readable_folder_shows_folder_summary() {
+        let fixture = Fixture::new("readable-folder");
+        fixture.png("image1.png");
+        fixture.png("image2.png");
+        let mut state = ShiftPrivate::default();
+
+        open_folder(&mut state, &fixture.0);
+
+        assert_eq!(state.current_index, Some(0));
+        assert!(state.status.ends_with("• 2 images"), "{}", state.status);
+    }
+
+    #[test]
+    fn picked_file_opens_at_its_position_in_the_folder() {
+        let fixture = Fixture::new("picked-sibling");
+        fixture.png("image1.png");
+        let picked = fixture.png("image2.png");
+        let mut state = ShiftPrivate::default();
+
+        let _ = update(&mut state, Message::FilePicked(Some(picked.clone())));
+
+        assert_eq!(state.current_path, Some(picked));
+        assert_eq!(state.current_index, Some(1));
+        assert_eq!(state.images_in_dir.len(), 2);
+    }
+
+    #[test]
+    fn picked_file_outside_the_folder_scan_opens_itself() {
+        let fixture = Fixture::new("picked-unlisted");
+        fixture.png("image1.png");
+        let picked = fixture.garbage("scan.dat");
+        let mut state = ShiftPrivate::default();
+
+        let _ = update(&mut state, Message::FilePicked(Some(picked.clone())));
+
+        assert_eq!(state.current_path, Some(picked.clone()));
+        assert_eq!(state.images_in_dir, vec![picked]);
+        assert_eq!(state.status, "Impossible de lire scan.dat");
     }
 }

@@ -15,7 +15,8 @@ Shift is a lightweight, keyboard-friendly desktop image viewer built with [Iced]
 
 - Opens an image from a native file picker, or a whole folder from a native folder picker.
 - Lists the other supported images in the same folder and lets you move through them.
-- Fit-to-window and manual zoom, with mouse wheel zoom and a scrollable zoomed view.
+- Fit-to-window, which shrinks large images to the window or screen and leaves small ones at their real size.
+- Manual zoom, with mouse wheel zoom and a scrollable zoomed view.
 - A fullscreen mode that hides the surrounding chrome.
 - A status line with the position in the folder, file name, dimensions, file size and last modified time.
 - Supported formats: PNG, JPEG, WebP, GIF and BMP.
