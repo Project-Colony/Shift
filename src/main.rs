@@ -16,7 +16,7 @@ const ZOOM_STEP: f32 = 0.25;
 const VIEWER_BASE_WIDTH: f32 = 960.0;
 const VIEWER_BASE_HEIGHT: f32 = 640.0;
 const LARGE_FOLDER_THRESHOLD: usize = 500;
-const STATUS_PLACEHOLDER: &str = "—";
+const STATUS_PLACEHOLDER: &str = "";
 
 fn main() -> iced::Result {
     iced::application(ShiftPrivate::default, update, view)
