@@ -41,7 +41,7 @@ Shift has no network access and collects nothing. It reads the image you open an
 
 ## Build from source
 
-You need a recent stable Rust toolchain.
+Requires Rust 1.88 or newer.
 
 ```bash
 git clone https://github.com/Project-Colony/Shift.git
