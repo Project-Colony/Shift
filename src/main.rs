@@ -1,9 +1,9 @@
-use iced::{
-    event, keyboard, mouse, window,
-    widget::{button, column, container, image, row, scrollable, text},
-    Alignment, Element, Event, Length, Subscription, Task, Theme,
-};
 use ::image::image_dimensions;
+use iced::{
+    Alignment, Element, Event, Length, Subscription, Task, Theme, event, keyboard, mouse,
+    widget::{button, column, container, image, row, scrollable, text},
+    window,
+};
 use rfd::FileDialog;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -89,18 +89,18 @@ fn update(state: &mut ShiftPrivate, message: Message) -> Task<Message> {
         Message::OpenFile => Task::perform(pick_file(), Message::FilePicked),
         Message::OpenFolder => Task::perform(pick_folder(), Message::FolderPicked),
         Message::PreviousImage => {
-            if let Some(index) = state.current_index {
-                if index > 0 {
-                    set_current_image(state, index - 1);
-                }
+            if let Some(index) = state.current_index
+                && index > 0
+            {
+                set_current_image(state, index - 1);
             }
             Task::none()
         }
         Message::NextImage => {
-            if let Some(index) = state.current_index {
-                if index + 1 < state.images_in_dir.len() {
-                    set_current_image(state, index + 1);
-                }
+            if let Some(index) = state.current_index
+                && index + 1 < state.images_in_dir.len()
+            {
+                set_current_image(state, index + 1);
             }
             Task::none()
         }
@@ -176,7 +176,10 @@ fn update(state: &mut ShiftPrivate, message: Message) -> Task<Message> {
         }
         Message::FilePicked(Some(path)) => {
             let images = collect_images_in_same_dir(&path);
-            let index = images.iter().position(|candidate| candidate == &path).unwrap_or(0);
+            let index = images
+                .iter()
+                .position(|candidate| candidate == &path)
+                .unwrap_or(0);
 
             state.images_in_dir = images;
             state.current_folder = path.parent().map(Path::to_path_buf);
@@ -247,19 +250,27 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
                         .current_index
                         .and_then(|index| (index > 0).then_some(Message::PreviousImage))
                 ),
-                button("→").on_press_maybe(
-                    state.current_index.and_then(|index| {
-                        (index + 1 < state.images_in_dir.len()).then_some(Message::NextImage)
-                    })
-                ),
-                button(if state.fit_to_view { "100%" } else { "Ajuster" })
-                    .on_press_maybe(state.current_path.as_ref().and(Some(if state.fit_to_view {
+                button("→").on_press_maybe(state.current_index.and_then(|index| {
+                    (index + 1 < state.images_in_dir.len()).then_some(Message::NextImage)
+                })),
+                button(if state.fit_to_view { "100%" } else { "Ajuster" }).on_press_maybe(
+                    state.current_path.as_ref().and(Some(if state.fit_to_view {
                         Message::ResetZoom
                     } else {
                         Message::ToggleFit
-                    }))),
-                button(if state.fullscreen { "Fenêtre" } else { "Plein écran" })
-                    .on_press_maybe(state.current_path.as_ref().map(|_| Message::ToggleFullscreen)),
+                    }))
+                ),
+                button(if state.fullscreen {
+                    "Fenêtre"
+                } else {
+                    "Plein écran"
+                })
+                .on_press_maybe(
+                    state
+                        .current_path
+                        .as_ref()
+                        .map(|_| Message::ToggleFullscreen)
+                ),
             ]
             .spacing(10)
             .wrap(),
@@ -344,10 +355,27 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
             .style(container::bordered_box)
     });
 
-    let content = column![show_controls_bar.then_some(controls_bar), viewer, meta_bar, footer]
-        .spacing(if has_image && !state.fullscreen { 10 } else { 0 })
-        .padding(if has_image && !state.fullscreen { 14 } else { 0 })
-        .max_width(if state.fullscreen { f32::INFINITY } else { 1280.0 });
+    let content = column![
+        show_controls_bar.then_some(controls_bar),
+        viewer,
+        meta_bar,
+        footer
+    ]
+    .spacing(if has_image && !state.fullscreen {
+        10
+    } else {
+        0
+    })
+    .padding(if has_image && !state.fullscreen {
+        14
+    } else {
+        0
+    })
+    .max_width(if state.fullscreen {
+        f32::INFINITY
+    } else {
+        1280.0
+    });
 
     container(content)
         .width(Length::Fill)
@@ -453,33 +481,49 @@ fn keyboard_action(state: &ShiftPrivate, event: &Event) -> Option<Message> {
         return None;
     };
 
-    use iced::keyboard::key::Named;
     use iced::keyboard::Key;
+    use iced::keyboard::key::Named;
 
     match key.as_ref() {
-        Key::Named(Named::ArrowLeft) if state.current_index.is_some() => Some(Message::PreviousImage),
-        Key::Named(Named::ArrowRight) if state.current_index.is_some() => Some(Message::NextImage),
-        Key::Character(character) if matches_char(character, &["p", "["]) && state.current_index.is_some() => {
+        Key::Named(Named::ArrowLeft) if state.current_index.is_some() => {
             Some(Message::PreviousImage)
         }
-        Key::Character(character) if matches_char(character, &["n", "]"]) && state.current_index.is_some() => {
+        Key::Named(Named::ArrowRight) if state.current_index.is_some() => Some(Message::NextImage),
+        Key::Character(character)
+            if matches_char(character, &["p", "["]) && state.current_index.is_some() =>
+        {
+            Some(Message::PreviousImage)
+        }
+        Key::Character(character)
+            if matches_char(character, &["n", "]"]) && state.current_index.is_some() =>
+        {
             Some(Message::NextImage)
         }
         Key::Named(Named::Home) if state.current_index.is_some() => Some(Message::FirstImage),
         Key::Named(Named::End) if state.current_index.is_some() => Some(Message::LastImage),
-        Key::Character(character) if matches_char(character, &["+", "=", "."]) && state.current_path.is_some() => {
+        Key::Character(character)
+            if matches_char(character, &["+", "=", "."]) && state.current_path.is_some() =>
+        {
             Some(Message::ZoomIn)
         }
-        Key::Character(character) if matches_char(character, &["-", ","]) && state.current_path.is_some() => {
+        Key::Character(character)
+            if matches_char(character, &["-", ","]) && state.current_path.is_some() =>
+        {
             Some(Message::ZoomOut)
         }
-        Key::Character(character) if matches_char(character, &["0", "f"]) && state.current_path.is_some() => {
+        Key::Character(character)
+            if matches_char(character, &["0", "f"]) && state.current_path.is_some() =>
+        {
             Some(Message::ToggleFit)
         }
-        Key::Character(character) if matches_char(character, &["1", "r"]) && state.current_path.is_some() => {
+        Key::Character(character)
+            if matches_char(character, &["1", "r"]) && state.current_path.is_some() =>
+        {
             Some(Message::ResetZoom)
         }
-        Key::Character(character) if matches_char(character, &["m"]) && state.current_path.is_some() => {
+        Key::Character(character)
+            if matches_char(character, &["m"]) && state.current_path.is_some() =>
+        {
             Some(Message::ToggleFullscreen)
         }
         Key::Character(character) if matches_char(character, &["o"]) => Some(Message::OpenFile),
@@ -494,9 +538,7 @@ fn matches_char(character: &str, candidates: &[&str]) -> bool {
 }
 
 fn mouse_action(state: &ShiftPrivate, event: &Event) -> Option<Message> {
-    if state.current_path.is_none() {
-        return None;
-    }
+    state.current_path.as_ref()?;
 
     let Event::Mouse(mouse::Event::WheelScrolled { delta }) = event else {
         return None;
@@ -616,7 +658,10 @@ fn image_details_label(path: &Path, image_info: Option<&ImageInfo>) -> Option<St
         .and_then(system_time_label)
         .unwrap_or_else(|| "date inconnue".to_string());
 
-    Some(format!("{} • {} • {}", dimensions_label, size_label, modified_label))
+    Some(format!(
+        "{} • {} • {}",
+        dimensions_label, size_label, modified_label
+    ))
 }
 
 fn truncate_middle(value: &str, max_chars: usize) -> String {
@@ -716,11 +761,11 @@ fn collect_images_in_dir(path: &Path) -> Vec<PathBuf> {
         .filter(|candidate| candidate.is_file() && is_supported_image(candidate))
         .collect();
 
-    images.sort_by(compare_image_paths);
+    images.sort_by(|left, right| compare_image_paths(left, right));
     images
 }
 
-fn compare_image_paths(left: &PathBuf, right: &PathBuf) -> std::cmp::Ordering {
+fn compare_image_paths(left: &Path, right: &Path) -> std::cmp::Ordering {
     natural_path_key(left).cmp(&natural_path_key(right))
 }
 
@@ -870,7 +915,10 @@ mod tests {
             images_in_dir: vec![PathBuf::from("image1.png")],
             fit_to_view: false,
             zoom: 3.0,
-            image_info: Some(ImageInfo { width: 800, height: 600 }),
+            image_info: Some(ImageInfo {
+                width: 800,
+                height: 600,
+            }),
             ..ShiftPrivate::default()
         };
 
@@ -940,7 +988,10 @@ mod tests {
 
     #[test]
     fn fit_dimensions_preserve_landscape_ratio() {
-        let info = ImageInfo { width: 1600, height: 900 };
+        let info = ImageInfo {
+            width: 1600,
+            height: 900,
+        };
 
         assert_eq!(fit_base_width(&info), VIEWER_BASE_WIDTH);
         assert_eq!(fit_base_height(&info), 540.0);
@@ -948,7 +999,10 @@ mod tests {
 
     #[test]
     fn fit_dimensions_preserve_portrait_ratio() {
-        let info = ImageInfo { width: 800, height: 1600 };
+        let info = ImageInfo {
+            width: 800,
+            height: 1600,
+        };
 
         assert_eq!(fit_base_width(&info), 320.0);
         assert_eq!(fit_base_height(&info), VIEWER_BASE_HEIGHT);
