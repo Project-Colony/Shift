@@ -1,3 +1,5 @@
+#![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
+
 use ::image::image_dimensions;
 use iced::{
     Alignment, ContentFit, Element, Event, Length, Subscription, Task, Theme, event, keyboard,
@@ -6,6 +8,7 @@ use iced::{
     window,
 };
 use rfd::FileDialog;
+use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
@@ -20,14 +23,29 @@ const LARGE_FOLDER_THRESHOLD: usize = 500;
 const STATUS_PLACEHOLDER: &str = "";
 
 fn main() -> iced::Result {
-    iced::application(ShiftPrivate::default, update, view)
+    // Answered before iced starts, so it works without a display: the release
+    // workflow runs `shift --version` on headless runners as a smoke test.
+    if wants_version(std::env::args_os().skip(1)) {
+        println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
+
+    iced::application(Shift::default, update, view)
+        .title("Shift")
         .theme(theme)
         .subscription(subscription)
         .run()
 }
 
+/// Whether the first argument after the program name is `--version` or `-V`.
+fn wants_version(args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> bool {
+    args.into_iter()
+        .next()
+        .is_some_and(|arg| matches!(arg.as_ref().to_str(), Some("--version" | "-V")))
+}
+
 #[derive(Debug)]
-struct ShiftPrivate {
+struct Shift {
     status: String,
     current_path: Option<PathBuf>,
     current_folder: Option<PathBuf>,
@@ -39,7 +57,7 @@ struct ShiftPrivate {
     image_info: Option<ImageInfo>,
 }
 
-impl Default for ShiftPrivate {
+impl Default for Shift {
     fn default() -> Self {
         Self {
             status: STATUS_PLACEHOLDER.to_string(),
@@ -74,7 +92,7 @@ enum Message {
     FolderPicked(Option<PathBuf>),
 }
 
-fn update(state: &mut ShiftPrivate, message: Message) -> Task<Message> {
+fn update(state: &mut Shift, message: Message) -> Task<Message> {
     match message {
         Message::EventOccurred(event) => {
             if let Some(action) = keyboard_action(state, &event) {
@@ -230,7 +248,7 @@ fn update(state: &mut ShiftPrivate, message: Message) -> Task<Message> {
     }
 }
 
-fn view(state: &ShiftPrivate) -> Element<'_, Message> {
+fn view(state: &Shift) -> Element<'_, Message> {
     let has_image = state.current_path.is_some();
     let show_controls_bar = !state.fullscreen || !has_image;
     let show_meta_bar = has_image && !state.fullscreen;
@@ -327,7 +345,7 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
         }
         None => container(
             column![
-                text("Shift Private").size(34),
+                text("Shift").size(34),
                 text("Un viewer calme, local, rapide.").size(16),
                 row![
                     button("Ouvrir").on_press(Message::OpenFile),
@@ -391,11 +409,11 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
         .into()
 }
 
-fn footer_visible(state: &ShiftPrivate) -> bool {
+fn footer_visible(state: &Shift) -> bool {
     state.status != STATUS_PLACEHOLDER && !state.fullscreen
 }
 
-fn viewer_meta_line(state: &ShiftPrivate) -> String {
+fn viewer_meta_line(state: &Shift) -> String {
     let position_label = match (state.current_index, state.images_in_dir.is_empty()) {
         (Some(index), false) => format!("{} / {}", index + 1, state.images_in_dir.len()),
         _ => "Aucune image".to_string(),
@@ -417,7 +435,7 @@ fn viewer_meta_line(state: &ShiftPrivate) -> String {
     format!("{} • {} • {}", position_label, file_label, details_label)
 }
 
-fn viewer_width(state: &ShiftPrivate) -> Length {
+fn viewer_width(state: &Shift) -> Length {
     if state.fit_to_view {
         Length::Fill
     } else {
@@ -425,7 +443,7 @@ fn viewer_width(state: &ShiftPrivate) -> Length {
     }
 }
 
-fn viewer_height(state: &ShiftPrivate) -> Length {
+fn viewer_height(state: &Shift) -> Length {
     if state.fit_to_view {
         Length::Fill
     } else {
@@ -433,7 +451,7 @@ fn viewer_height(state: &ShiftPrivate) -> Length {
     }
 }
 
-fn manual_base_width(state: &ShiftPrivate) -> f32 {
+fn manual_base_width(state: &Shift) -> f32 {
     state
         .image_info
         .as_ref()
@@ -441,7 +459,7 @@ fn manual_base_width(state: &ShiftPrivate) -> f32 {
         .unwrap_or(VIEWER_BASE_WIDTH)
 }
 
-fn manual_base_height(state: &ShiftPrivate) -> f32 {
+fn manual_base_height(state: &Shift) -> f32 {
     state
         .image_info
         .as_ref()
@@ -449,15 +467,15 @@ fn manual_base_height(state: &ShiftPrivate) -> f32 {
         .unwrap_or(VIEWER_BASE_HEIGHT)
 }
 
-fn theme(_state: &ShiftPrivate) -> Theme {
+fn theme(_state: &Shift) -> Theme {
     Theme::TokyoNight
 }
 
-fn subscription(_state: &ShiftPrivate) -> Subscription<Message> {
+fn subscription(_state: &Shift) -> Subscription<Message> {
     event::listen().map(Message::EventOccurred)
 }
 
-fn keyboard_action(state: &ShiftPrivate, event: &Event) -> Option<Message> {
+fn keyboard_action(state: &Shift, event: &Event) -> Option<Message> {
     let Event::Keyboard(keyboard::Event::KeyPressed { key, .. }) = event else {
         return None;
     };
@@ -518,7 +536,7 @@ fn matches_char(character: &str, candidates: &[&str]) -> bool {
     candidates.iter().any(|candidate| lowered == *candidate)
 }
 
-fn mouse_action(state: &ShiftPrivate, event: &Event) -> Option<Message> {
+fn mouse_action(state: &Shift, event: &Event) -> Option<Message> {
     state.current_path.as_ref()?;
 
     let Event::Mouse(mouse::Event::WheelScrolled { delta }) = event else {
@@ -557,7 +575,7 @@ async fn pick_folder() -> Option<PathBuf> {
 ///
 /// An unreadable image still becomes the current one, so navigation can step
 /// past it, but the status keeps the read error.
-fn set_current_image(state: &mut ShiftPrivate, index: usize) -> bool {
+fn set_current_image(state: &mut Shift, index: usize) -> bool {
     let Some(path) = state.images_in_dir.get(index).cloned() else {
         return false;
     };
@@ -594,7 +612,7 @@ fn zoom_status(zoom: f32) -> String {
     format!("{:.0}%", zoom * 100.0)
 }
 
-fn current_image_status(state: &ShiftPrivate) -> String {
+fn current_image_status(state: &Shift) -> String {
     match (state.current_path.as_ref(), state.current_index) {
         (Some(path), Some(index)) if !state.images_in_dir.is_empty() => {
             image_loaded_status(path, index, state.images_in_dir.len())
@@ -853,8 +871,36 @@ mod tests {
         }
     }
 
-    fn open_folder(state: &mut ShiftPrivate, folder: &Path) {
+    fn open_folder(state: &mut Shift, folder: &Path) {
         let _ = update(state, Message::FolderPicked(Some(folder.to_path_buf())));
+    }
+
+    #[test]
+    fn version_flag_is_only_read_from_the_first_argument() {
+        assert!(wants_version(["--version"]));
+        assert!(wants_version(["-V"]));
+        assert!(!wants_version([""; 0]));
+        assert!(!wants_version(["photo.png"]));
+        assert!(!wants_version(["photo.png", "--version"]));
+        assert!(!wants_version(["-v"]));
+    }
+
+    /// The codecs are opt-in features of the `image` crate, so a format missing
+    /// from Cargo.toml would list files that then fail to open.
+    #[test]
+    fn every_supported_extension_decodes() {
+        let fixture = Fixture::new("codecs");
+
+        for extension in SUPPORTED_EXTENSIONS {
+            let path = fixture.0.join(format!("sample.{extension}"));
+            ::image::RgbImage::new(1, 1)
+                .save(&path)
+                .unwrap_or_else(|error| panic!("cannot write {extension}: {error}"));
+
+            let decoded = ::image::open(&path)
+                .unwrap_or_else(|error| panic!("cannot decode {extension}: {error}"));
+            assert_eq!((decoded.width(), decoded.height()), (1, 1), "{extension}");
+        }
     }
 
     #[test]
@@ -908,7 +954,7 @@ mod tests {
         let fixture = Fixture::new("manual-zoom");
         fixture.png("image1.png");
         fixture.png("image2.png");
-        let mut state = ShiftPrivate::default();
+        let mut state = Shift::default();
         open_folder(&mut state, &fixture.0);
 
         let _ = update(&mut state, Message::ZoomBy(1.5));
@@ -940,7 +986,7 @@ mod tests {
         fixture.png("image1.png");
         let empty = fixture.0.join("empty");
         fs::create_dir(&empty).unwrap();
-        let mut state = ShiftPrivate::default();
+        let mut state = Shift::default();
         open_folder(&mut state, &fixture.0);
         let _ = update(&mut state, Message::ZoomBy(2.0));
         assert!(state.current_path.is_some());
@@ -959,7 +1005,7 @@ mod tests {
 
     #[test]
     fn cancelling_file_pick_keeps_empty_state_message() {
-        let mut state = ShiftPrivate::default();
+        let mut state = Shift::default();
 
         let _ = update(&mut state, Message::FilePicked(None));
 
@@ -968,13 +1014,13 @@ mod tests {
 
     #[test]
     fn default_status_is_neutral() {
-        let state = ShiftPrivate::default();
+        let state = Shift::default();
         assert_eq!(state.status, STATUS_PLACEHOLDER);
     }
 
     #[test]
     fn cancelling_folder_pick_keeps_neutral_status_when_empty() {
-        let mut state = ShiftPrivate::default();
+        let mut state = Shift::default();
 
         let _ = update(&mut state, Message::FolderPicked(None));
 
@@ -983,7 +1029,7 @@ mod tests {
 
     #[test]
     fn neutral_status_keeps_footer_hidden() {
-        let mut state = ShiftPrivate::default();
+        let mut state = Shift::default();
         assert!(!footer_visible(&state));
 
         let _ = update(&mut state, Message::FolderPicked(None));
@@ -1008,7 +1054,7 @@ mod tests {
         let fixture = Fixture::new("unreadable-first");
         fixture.garbage("cassée.png");
         fixture.png("image2.png");
-        let mut state = ShiftPrivate::default();
+        let mut state = Shift::default();
 
         open_folder(&mut state, &fixture.0);
 
@@ -1022,7 +1068,7 @@ mod tests {
         let fixture = Fixture::new("unreadable-navigation");
         fixture.garbage("cassée.png");
         fixture.png("image2.png");
-        let mut state = ShiftPrivate::default();
+        let mut state = Shift::default();
         open_folder(&mut state, &fixture.0);
 
         let _ = update(&mut state, Message::NextImage);
@@ -1036,7 +1082,7 @@ mod tests {
         let fixture = Fixture::new("readable-folder");
         fixture.png("image1.png");
         fixture.png("image2.png");
-        let mut state = ShiftPrivate::default();
+        let mut state = Shift::default();
 
         open_folder(&mut state, &fixture.0);
 
@@ -1049,7 +1095,7 @@ mod tests {
         let fixture = Fixture::new("picked-sibling");
         fixture.png("image1.png");
         let picked = fixture.png("image2.png");
-        let mut state = ShiftPrivate::default();
+        let mut state = Shift::default();
 
         let _ = update(&mut state, Message::FilePicked(Some(picked.clone())));
 
@@ -1063,7 +1109,7 @@ mod tests {
         let fixture = Fixture::new("picked-unlisted");
         fixture.png("image1.png");
         let picked = fixture.garbage("scan.dat");
-        let mut state = ShiftPrivate::default();
+        let mut state = Shift::default();
 
         let _ = update(&mut state, Message::FilePicked(Some(picked.clone())));
 

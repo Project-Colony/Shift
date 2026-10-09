@@ -1,5 +1,5 @@
 [package]
-name = "shift_private"
+name = "shift"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.88"
@@ -8,7 +8,13 @@ license = "GPL-3.0-or-later"
 repository = "https://github.com/Project-Colony/Shift"
 
 [dependencies]
-iced = { version = "0.14", features = ["image", "tokio"] }
-rfd = "0.17"
-image = { version = "0.25", default-features = true }
-anyhow = "1"
+# Codecs come from the direct `image` dependency below, which iced shares, so
+# only the formats Shift lists in SUPPORTED_EXTENSIONS are compiled in.
+iced = { version = "0.14.0", features = ["image-without-codecs", "tokio"] }
+rfd = "0.17.2"
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
