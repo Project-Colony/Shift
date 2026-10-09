@@ -376,7 +376,9 @@ fn view(state: &ShiftPrivate) -> Element<'_, Message> {
     } else {
         0
     })
-    .max_width(if state.fullscreen {
+    // An open image gets the whole window so fit mode can use all of it; the
+    // cap only keeps the empty start screen compact.
+    .max_width(if has_image || state.fullscreen {
         f32::INFINITY
     } else {
         1280.0
