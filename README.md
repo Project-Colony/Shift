@@ -18,11 +18,12 @@ no library and never changes your files.
 
 > **Status:** early and deliberately small. The viewer logic is covered by unit
 > tests that drive the real `update()` function: opening a file or a folder,
-> unreadable images and empty folders, navigation, zoom, natural sort order and
-> the status line. CI runs them on Linux, Windows and macOS and on the Rust 1.88
-> floor, with clippy and rustfmt. Drawing, the keyboard and mouse bindings,
-> fullscreen and the file pickers have no automated tests. The interface is in
-> French only for now.
+> unreadable images and empty folders, navigation, zoom, natural sort order, the
+> status line, opening and closing Preferences, and saving and reloading the
+> preferences file, corrupt files included. CI runs them on Linux, Windows and
+> macOS and on the Rust 1.88 floor, with clippy and rustfmt. Drawing, most of
+> the keyboard and mouse bindings, fullscreen and the file pickers have no
+> automated tests. The interface ships in English and French.
 
 ## Why Shift
 
@@ -44,6 +45,10 @@ no library and never changes your files.
 - A fullscreen mode that hides the surrounding chrome.
 - A status line with the position in the folder, file name, dimensions, file size and last modified time.
 - Supported formats: PNG, JPEG, WebP, GIF and BMP.
+- Preferences, behind the **Shift** button in the top-left corner: the Colony
+  themes and accent colours, text size, high contrast, a dyslexia-friendly
+  font, reduced motion and the interface language (English or French, or the
+  system's). A change applies and is saved at once.
 
 ### Keyboard shortcuts
 
@@ -59,6 +64,9 @@ no library and never changes your files.
 | `0` / `F` | Toggle fit and manual zoom |
 | `1` / `R` | Reset zoom |
 | `M` | Toggle fullscreen |
+| `Esc` | Close Preferences |
+
+While Preferences is open, the viewer keys are off and only `Esc` works.
 
 ## Installation
 
@@ -141,11 +149,24 @@ Shift sends no telemetry, no analytics and no crash reports.
 |---|---|---|
 | The image you open | read | to show it, with its size and last modified time in the status line |
 | The folder it is in | read | listed to find the other supported images, so you can move through them |
-| Settings and history | not kept | Shift writes no files: nothing is remembered between runs |
+| Your preferences | stored on this computer | written when you change one, read at launch, in `preferences.json` (paths below) |
+| Images and folders you opened | not kept | Shift remembers no file or folder between runs |
+
+The preferences file is the only file Shift writes:
+
+| Platform | Path |
+|---|---|
+| Linux | `~/.config/Colony/Shift/preferences/preferences.json` (or under `$XDG_CONFIG_HOME`) |
+| Windows | `%LOCALAPPDATA%\Colony\Shift\preferences\preferences.json` |
+| macOS | `~/Library/Application Support/Colony/Shift/preferences/preferences.json` |
+
+The About category of Preferences shows the path in use. Delete the file to go
+back to the defaults.
 
 This program will not transfer any information to other networked systems
 unless specifically requested by the user or the person installing or operating
-it. Shift has no network code at all: it connects to no server.
+it. Shift has no network code at all: it connects to no server, and the
+preferences file never leaves your computer.
 
 ## License
 
