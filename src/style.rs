@@ -24,7 +24,7 @@ pub fn theme(_state: &Shift) -> Theme {
 }
 
 /// The buttons of the control bar and of the start screen.
-pub fn button(_theme: &Theme, status: button::Status) -> button::Style {
+pub fn action(_theme: &Theme, status: button::Status) -> button::Style {
     let palette = active_palette();
     let (background, text_color) = match status {
         button::Status::Active => (palette.btn_default, palette.text_primary),
@@ -87,6 +87,7 @@ mod tests {
     fn no_raw_text_size_and_no_literal_colour() {
         let sources = [
             ("app.rs", include_str!("app.rs")),
+            ("preferences.rs", include_str!("preferences.rs")),
             ("style.rs", include_str!("style.rs")),
         ];
         let literal_colour = concat!("Color::", "from_rgb");

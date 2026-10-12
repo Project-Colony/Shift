@@ -22,7 +22,10 @@ pub(super) const STRINGS: &[(&str, &str)] = &[
     ("status_unreadable", "Cannot read {name}"),
     ("status_folder_one", "{folder} • 1 image"),
     ("status_folder", "{folder} • {count} images"),
-    ("status_folder_large", "{folder} • {count} images • large folder"),
+    (
+        "status_folder_large",
+        "{folder} • {count} images • large folder",
+    ),
     // Details bar
     ("unknown_dimensions", "unknown dimensions"),
     ("unknown_size", "unknown size"),
@@ -35,4 +38,38 @@ pub(super) const STRINGS: &[(&str, &str)] = &[
     ("modified_minutes", "modified {count} min ago"),
     ("modified_hours", "modified {count} h ago"),
     ("modified_days", "modified {count} d ago"),
+    // Preferences, beyond the shared Colony labels
+    ("preferences_section_language", "Language"),
+    (
+        "preferences_language_desc",
+        "The language of the interface. A change applies at once.",
+    ),
+    ("preferences_language", "Interface language"),
+    (
+        "preferences_language_auto_desc",
+        "Automatic follows the language of your system.",
+    ),
+    ("preferences_language_auto", "Automatic"),
+    ("preferences_language_en", "English"),
+    ("preferences_language_fr", "Français"),
+    (
+        "preferences_about_desc",
+        "A fast, local, keyboard-friendly image viewer.",
+    ),
+    ("preferences_about_version", "Version {version}"),
+    ("preferences_about_license", "License: GPL-3.0-or-later"),
+    ("preferences_about_source", "Source code: {url}"),
+    ("preferences_about_file", "Preferences file: {path}"),
+    (
+        "preferences_about_file_none",
+        "This system has no configuration folder, so preferences last until Shift closes.",
+    ),
+    (
+        "preferences_save_failed",
+        "Cannot save preferences: {error}",
+    ),
+    (
+        "preferences_load_failed",
+        "Cannot read the saved preferences, so the defaults are in use: {error}",
+    ),
 ];

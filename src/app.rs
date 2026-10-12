@@ -4,22 +4,25 @@ use crate::format::{
     folder_loaded_status, image_details_label, image_loaded_status, image_name_label,
     no_images_status, unreadable_status, zoom_label,
 };
-use crate::i18n::t;
 use crate::gallery::{
     ImageInfo, SUPPORTED_EXTENSIONS, collect_images_in_dir, collect_images_in_same_dir,
     read_image_info,
 };
+use crate::i18n::{self, t, t_with};
+use crate::preferences::{self, Language, Prefs};
 use crate::style;
+use colony_ui::preferences::Change;
 use colony_ui::theme::Palette;
-use colony_ui::widgets::icons;
+use colony_ui::widgets::{self, icons};
 use colony_ui::{Typography, fonts};
 use iced::{
     Alignment, Color, ContentFit, Element, Event, Length, Subscription, Task, event, keyboard,
     mouse,
-    widget::{button, column, container, image, row, scrollable, text, tooltip},
+    widget::{button, column, container, image, row, scrollable, stack, text, tooltip},
     window,
 };
 use rfd::FileDialog;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 const MIN_ZOOM: f32 = 0.25;
@@ -47,6 +50,17 @@ pub struct Shift {
     fit_to_view: bool,
     fullscreen: bool,
     image_info: Option<ImageInfo>,
+    prefs: Prefs,
+    /// Where preferences are saved. `None` keeps them in memory: in the tests,
+    /// and on a system without a configuration folder.
+    prefs_path: Option<PathBuf>,
+    preferences_open: bool,
+    /// The selected Preferences category, an index into the category list.
+    category: usize,
+    /// The open sections of the Preferences page, by key.
+    expanded: HashSet<String>,
+    /// The toast over the Preferences page.
+    notice: Option<String>,
 }
 
 impl Default for Shift {
@@ -61,6 +75,36 @@ impl Default for Shift {
             fit_to_view: true,
             fullscreen: false,
             image_info: None,
+            prefs: Prefs::default(),
+            prefs_path: None,
+            preferences_open: false,
+            category: 0,
+            expanded: HashSet::new(),
+            notice: None,
+        }
+    }
+}
+
+impl Shift {
+    /// The state at launch, with the saved preferences in effect before the
+    /// first frame is drawn.
+    pub fn boot() -> Self {
+        let prefs_path = preferences::file_path();
+        let (prefs, load_error) = match prefs_path.as_deref().map(preferences::load) {
+            Some(Err(error)) => (Prefs::default(), Some(error)),
+            Some(Ok(prefs)) => (prefs, None),
+            None => (Prefs::default(), None),
+        };
+        // Before the status below, so it is written in the chosen language.
+        prefs.apply();
+
+        Self {
+            status: load_error
+                .map(|error| t_with("preferences_load_failed", &[("error", &error)]))
+                .unwrap_or_default(),
+            prefs,
+            prefs_path,
+            ..Self::default()
         }
     }
 }
@@ -82,9 +126,20 @@ pub enum Message {
     EventOccurred(Event),
     FilePicked(Option<PathBuf>),
     FolderPicked(Option<PathBuf>),
+    /// Sent by the Shift button and by the page's Close button alike.
+    TogglePreferences,
+    Category(usize),
+    ToggleSection(&'static str),
+    Preference(Change),
+    Language(Language),
+    DismissNotice,
 }
 
 pub fn update(state: &mut Shift, message: Message) -> Task<Message> {
+    if returns_to_viewer(&message) {
+        state.preferences_open = false;
+    }
+
     match message {
         Message::EventOccurred(event) => {
             if let Some(action) = keyboard_action(state, &event) {
@@ -237,6 +292,71 @@ pub fn update(state: &mut Shift, message: Message) -> Task<Message> {
             };
             Task::none()
         }
+        Message::TogglePreferences => {
+            state.preferences_open = !state.preferences_open;
+            state.category = 0;
+            state.expanded.clear();
+            state.notice = None;
+            Task::none()
+        }
+        Message::Category(index) => {
+            state.category = index;
+            Task::none()
+        }
+        Message::ToggleSection(key) => {
+            if !state.expanded.remove(key) {
+                state.expanded.insert(key.to_string());
+            }
+            Task::none()
+        }
+        Message::Preference(change) => {
+            state.prefs.standard.update(change);
+            if matches!(change, Change::Theme { .. }) {
+                state.notice = Some(t("theme_applied").to_string());
+            }
+            save_preferences(state);
+            Task::none()
+        }
+        Message::Language(language) => {
+            state.prefs.language = language;
+            i18n::set_locale(language.locale());
+            save_preferences(state);
+            Task::none()
+        }
+        Message::DismissNotice => {
+            state.notice = None;
+            Task::none()
+        }
+    }
+}
+
+/// The control-bar buttons act on the viewer, so pressing one while
+/// Preferences is open goes back to it. Their keys are off while it is open.
+fn returns_to_viewer(message: &Message) -> bool {
+    matches!(
+        message,
+        Message::OpenFile
+            | Message::OpenFolder
+            | Message::PreviousImage
+            | Message::NextImage
+            | Message::ResetZoom
+            | Message::ToggleFit
+            | Message::ToggleFullscreen
+    )
+}
+
+/// Writes the preferences after a change; there is no Save button. A failure
+/// is shown on the page, and the change still applies until Shift closes.
+fn save_preferences(state: &mut Shift) {
+    let Some(path) = &state.prefs_path else {
+        return;
+    };
+
+    if let Err(error) = preferences::save(path, &state.prefs) {
+        state.notice = Some(t_with(
+            "preferences_save_failed",
+            &[("error", &error.to_string())],
+        ));
     }
 }
 
@@ -245,11 +365,18 @@ pub fn view(state: &Shift) -> Element<'_, Message> {
     // font on, OpenDyslexic in every weight.
     let typo = Typography::current();
     let has_image = state.current_path.is_some();
-    let show_controls_bar = !state.fullscreen || !has_image;
-    let framed = has_image && !state.fullscreen;
+    let show_controls_bar = state.preferences_open || !state.fullscreen || !has_image;
+    let framed = state.preferences_open || (has_image && !state.fullscreen);
 
     let controls_bar = container(
         row![
+            widgets::identity_button(
+                &typo,
+                NAME,
+                15,
+                state.preferences_open,
+                Message::TogglePreferences
+            ),
             open_buttons(&typo),
             row![
                 arrow_button(
@@ -372,22 +499,34 @@ pub fn view(state: &Shift) -> Element<'_, Message> {
         .current_path
         .as_deref()
         .filter(|_| !state.fullscreen)
-        .map(|path| status_bar(&typo, viewer_meta_line(state, path), Palette::TEXT_SECONDARY()));
+        .map(|path| {
+            status_bar(
+                &typo,
+                viewer_meta_line(state, path),
+                Palette::TEXT_SECONDARY(),
+            )
+        });
 
     let footer = footer_visible(state)
         .then(|| status_bar(&typo, state.status.clone(), Palette::TEXT_MUTED()));
 
-    let content = column![
-        show_controls_bar.then_some(controls_bar),
-        viewer,
-        meta_bar,
-        footer
-    ]
+    // Preferences replaces the viewer, its details and its status line; the
+    // control bar stays.
+    let content = if state.preferences_open {
+        column![controls_bar, preferences_view(state, &typo)]
+    } else {
+        column![
+            show_controls_bar.then_some(controls_bar),
+            viewer,
+            meta_bar,
+            footer
+        ]
+    }
     .spacing(if framed { 10 } else { 0 })
     .padding(if framed { 14 } else { 0 })
-    // An open image gets the whole window so fit mode can use all of it; the
-    // cap only keeps the empty start screen compact.
-    .max_width(if has_image || state.fullscreen {
+    // An open image and Preferences get the whole window, so fit mode can use
+    // all of it; the cap only keeps the empty start screen compact.
+    .max_width(if framed || has_image || state.fullscreen {
         f32::INFINITY
     } else {
         1280.0
@@ -400,11 +539,36 @@ pub fn view(state: &Shift) -> Element<'_, Message> {
         .into()
 }
 
+fn preferences_view<'a>(state: &Shift, typo: &Typography) -> Element<'a, Message> {
+    let page = preferences::page(
+        typo,
+        &state.prefs,
+        &state.expanded,
+        state.category,
+        state.prefs_path.as_deref(),
+    );
+
+    match &state.notice {
+        Some(notice) => stack![
+            page,
+            container(widgets::toast(typo, notice, Message::DismissNotice))
+                .padding(16)
+                .align_bottom(Length::Fill),
+        ]
+        .into(),
+        None => page,
+    }
+}
+
 /// Open and Folder: on the control bar and on the start screen.
 fn open_buttons<'a>(typo: &Typography) -> Element<'a, Message> {
     row![
         action_button(typo, t("open").to_string(), Some(Message::OpenFile)),
-        action_button(typo, t("open_folder").to_string(), Some(Message::OpenFolder)),
+        action_button(
+            typo,
+            t("open_folder").to_string(),
+            Some(Message::OpenFolder)
+        ),
     ]
     .spacing(10)
     .wrap()
@@ -419,7 +583,7 @@ fn action_button<'a>(
 ) -> Element<'a, Message> {
     button(text(label).size(typo.sz(14)).font(typo.regular))
         .padding([6, 12])
-        .style(style::button)
+        .style(style::action)
         .on_press_maybe(on_press)
         .into()
 }
@@ -435,7 +599,7 @@ fn arrow_button<'a>(
     tooltip(
         button(text(glyph).size(typo.sz(14)).font(fonts::glyph_font()))
             .padding([6, 12])
-            .style(style::button)
+            .style(style::action)
             .on_press_maybe(on_press),
         container(text(hint).size(typo.sz(12)).font(typo.regular))
             .padding([4, 8])
@@ -513,6 +677,12 @@ fn keyboard_action(state: &Shift, event: &Event) -> Option<Message> {
     use iced::keyboard::Key;
     use iced::keyboard::key::Named;
 
+    // The viewer keys would act on an image the page hides. Escape closes it.
+    if state.preferences_open {
+        return matches!(key.as_ref(), Key::Named(Named::Escape))
+            .then_some(Message::TogglePreferences);
+    }
+
     match key.as_ref() {
         Key::Named(Named::ArrowLeft) if state.current_index.is_some() => {
             Some(Message::PreviousImage)
@@ -567,7 +737,9 @@ fn matches_char(character: &str, candidates: &[&str]) -> bool {
 }
 
 fn mouse_action(state: &Shift, event: &Event) -> Option<Message> {
-    state.current_path.as_ref()?;
+    if state.preferences_open || state.current_path.is_none() {
+        return None;
+    }
 
     let Event::Mouse(mouse::Event::WheelScrolled { delta }) = event else {
         return None;
@@ -825,5 +997,104 @@ mod tests {
         assert_eq!(state.current_path, Some(picked.clone()));
         assert_eq!(state.images_in_dir, vec![picked]);
         assert_eq!(state.status, "Cannot read scan.dat");
+    }
+
+    fn key_press(key: keyboard::Key) -> Event {
+        Event::Keyboard(keyboard::Event::KeyPressed {
+            modified_key: key.clone(),
+            key,
+            physical_key: keyboard::key::Physical::Unidentified(
+                keyboard::key::NativeCode::Unidentified,
+            ),
+            location: keyboard::Location::Standard,
+            modifiers: keyboard::Modifiers::empty(),
+            text: None,
+            repeat: false,
+        })
+    }
+
+    #[test]
+    fn the_same_message_opens_and_closes_preferences() {
+        let mut state = Shift::default();
+
+        let _ = update(&mut state, Message::TogglePreferences);
+        assert!(state.preferences_open);
+        let _ = update(&mut state, Message::Category(2));
+        let _ = update(&mut state, Message::ToggleSection("vision"));
+
+        // Close sends the message of the Shift button that opened the page.
+        let _ = update(&mut state, Message::TogglePreferences);
+        assert!(!state.preferences_open);
+
+        let _ = update(&mut state, Message::TogglePreferences);
+        assert_eq!(state.category, 0, "the page reopens on General");
+        assert!(state.expanded.is_empty(), "its sections reopen collapsed");
+    }
+
+    #[test]
+    fn viewer_keys_are_off_while_preferences_are_open_and_escape_closes_it() {
+        let fixture = Fixture::new("preferences-keys");
+        fixture.png("image1.png");
+        fixture.png("image2.png");
+        let mut state = Shift::default();
+        open_folder(&mut state, &fixture.0);
+        let _ = update(&mut state, Message::TogglePreferences);
+
+        let next = key_press(keyboard::Key::Character("n".into()));
+        let wheel = Event::Mouse(mouse::Event::WheelScrolled {
+            delta: mouse::ScrollDelta::Lines { x: 0.0, y: 1.0 },
+        });
+        let _ = update(&mut state, Message::EventOccurred(next.clone()));
+        let _ = update(&mut state, Message::EventOccurred(wheel));
+        assert_eq!(state.current_index, Some(0));
+        assert!(state.fit_to_view, "the wheel did not zoom the hidden image");
+
+        let escape = key_press(keyboard::Key::Named(keyboard::key::Named::Escape));
+        let _ = update(&mut state, Message::EventOccurred(escape));
+        assert!(!state.preferences_open);
+
+        let _ = update(&mut state, Message::EventOccurred(next));
+        assert_eq!(state.current_index, Some(1));
+    }
+
+    #[test]
+    fn a_control_bar_button_goes_back_to_the_viewer() {
+        let fixture = Fixture::new("preferences-bar");
+        fixture.png("image1.png");
+        let mut state = Shift::default();
+        open_folder(&mut state, &fixture.0);
+        let _ = update(&mut state, Message::TogglePreferences);
+
+        let _ = update(&mut state, Message::ResetZoom);
+
+        assert!(!state.preferences_open);
+        assert!(!state.fit_to_view);
+    }
+
+    #[test]
+    fn a_preference_change_applies_and_is_saved_at_once() {
+        let fixture = Fixture::new("preferences-save");
+        let path = fixture.0.join("preferences").join("preferences.json");
+        let mut state = Shift {
+            prefs_path: Some(path.clone()),
+            ..Shift::default()
+        };
+
+        let _ = update(
+            &mut state,
+            Message::Preference(Change::FontSize(colony_ui::FontSize::Large)),
+        );
+        let _ = update(
+            &mut state,
+            Message::Preference(Change::Theme {
+                family: "gruvbox",
+                variant: "dark",
+            }),
+        );
+
+        let saved = preferences::load(&path).unwrap();
+        assert_eq!(saved, state.prefs);
+        assert_eq!(saved.standard.font_size, colony_ui::FontSize::Large);
+        assert_eq!(state.notice.as_deref(), Some(t("theme_applied")));
     }
 }

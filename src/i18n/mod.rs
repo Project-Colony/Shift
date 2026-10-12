@@ -133,17 +133,23 @@ mod tests {
     fn shared_labels_come_from_colony_ui() {
         assert_eq!(t_in(Locale::En, "settings_title"), "Preferences");
         assert_eq!(t_in(Locale::Fr, "settings_title"), "Préférences");
-        assert!(!keys(en::STRINGS).iter().any(|key| key.starts_with("settings_")));
+        assert!(
+            !keys(en::STRINGS)
+                .iter()
+                .any(|key| key.starts_with("settings_"))
+        );
     }
 
     #[test]
     fn fill_substitutes_once_and_keeps_unknown_placeholders() {
         assert_eq!(
-            fill("{folder} • {count} images", &[("folder", "{count}"), ("count", "3")]),
+            fill(
+                "{folder} • {count} images",
+                &[("folder", "{count}"), ("count", "3")]
+            ),
             "{count} • 3 images"
         );
         assert_eq!(fill("{missing} {", &[]), "{missing} {");
         assert_eq!(fill("no placeholder", &[("a", "b")]), "no placeholder");
     }
-
 }

@@ -10,7 +10,10 @@ use std::time::{Duration, SystemTime};
 pub const LARGE_FOLDER_THRESHOLD: usize = 500;
 
 pub fn zoom_label(zoom: f32) -> String {
-    t_with("zoom_percent", &[("percent", &format!("{:.0}", zoom * 100.0))])
+    t_with(
+        "zoom_percent",
+        &[("percent", &format!("{:.0}", zoom * 100.0))],
+    )
 }
 
 pub fn image_loaded_status(path: &Path, index: usize, total: usize) -> String {
@@ -18,7 +21,10 @@ pub fn image_loaded_status(path: &Path, index: usize, total: usize) -> String {
 }
 
 pub fn unreadable_status(path: &Path) -> String {
-    t_with("status_unreadable", &[("name", &image_name_label(path, 36))])
+    t_with(
+        "status_unreadable",
+        &[("name", &image_name_label(path, 36))],
+    )
 }
 
 pub fn no_images_status(folder: &Path) -> String {
