@@ -3,6 +3,7 @@
 mod app;
 mod format;
 mod gallery;
+mod i18n;
 
 use std::ffi::OsStr;
 
@@ -13,6 +14,8 @@ fn main() -> iced::Result {
         println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
         return Ok(());
     }
+
+    i18n::set_locale(i18n::system_locale());
 
     iced::application(app::Shift::default, app::update, app::view)
         .title("Shift")

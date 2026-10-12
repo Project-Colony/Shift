@@ -2,8 +2,9 @@
 
 use crate::format::{
     folder_loaded_status, image_details_label, image_loaded_status, image_name_label,
-    truncate_middle, unreadable_status, zoom_status,
+    no_images_status, unreadable_status, zoom_label,
 };
+use crate::i18n::t;
 use crate::gallery::{
     ImageInfo, SUPPORTED_EXTENSIONS, collect_images_in_dir, collect_images_in_same_dir,
     read_image_info,
@@ -118,40 +119,40 @@ pub fn update(state: &mut Shift, message: Message) -> Task<Message> {
         Message::ZoomIn => {
             state.fit_to_view = false;
             state.zoom = (state.zoom + ZOOM_STEP).min(MAX_ZOOM);
-            state.status = zoom_status(state.zoom);
+            state.status = zoom_label(state.zoom);
             Task::none()
         }
         Message::ZoomOut => {
             state.fit_to_view = false;
             state.zoom = (state.zoom - ZOOM_STEP).max(MIN_ZOOM);
-            state.status = zoom_status(state.zoom);
+            state.status = zoom_label(state.zoom);
             Task::none()
         }
         Message::ZoomBy(delta) => {
             state.fit_to_view = false;
             state.zoom = (state.zoom + delta).clamp(MIN_ZOOM, MAX_ZOOM);
-            state.status = zoom_status(state.zoom);
+            state.status = zoom_label(state.zoom);
             Task::none()
         }
         Message::ResetZoom => {
             state.fit_to_view = false;
             state.zoom = 1.0;
-            state.status = zoom_status(state.zoom);
+            state.status = zoom_label(state.zoom);
             Task::none()
         }
         Message::ToggleFit => {
             state.fit_to_view = !state.fit_to_view;
             state.status = if state.fit_to_view {
-                "Mode ajusté.".to_string()
+                t("status_fit").to_string()
             } else {
-                zoom_status(state.zoom)
+                zoom_label(state.zoom)
             };
             Task::none()
         }
         Message::ToggleFullscreen => {
             state.fullscreen = !state.fullscreen;
             state.status = if state.fullscreen {
-                "Plein écran.".to_string()
+                t("status_fullscreen").to_string()
             } else {
                 current_image_status(state)
             };
@@ -187,9 +188,9 @@ pub fn update(state: &mut Shift, message: Message) -> Task<Message> {
         }
         Message::FilePicked(None) => {
             if state.current_path.is_none() {
-                state.status = "Aucune image ouverte.".to_string();
+                state.status = t("status_no_image_open").to_string();
             } else {
-                state.status = "Sélection annulée.".to_string();
+                state.status = t("status_open_cancelled").to_string();
             }
             Task::none()
         }
@@ -197,7 +198,7 @@ pub fn update(state: &mut Shift, message: Message) -> Task<Message> {
             let images = collect_images_in_dir(&folder);
 
             if images.is_empty() {
-                state.status = format!("Aucune image trouvée dans {}", folder.display());
+                state.status = no_images_status(&folder);
                 state.current_folder = Some(folder);
                 state.current_path = None;
                 state.current_index = None;
@@ -219,7 +220,7 @@ pub fn update(state: &mut Shift, message: Message) -> Task<Message> {
         }
         Message::FolderPicked(None) => {
             state.status = if state.current_path.is_some() {
-                "Ouverture de dossier annulée.".to_string()
+                t("status_folder_cancelled").to_string()
             } else {
                 STATUS_PLACEHOLDER.to_string()
             };
@@ -237,8 +238,8 @@ pub fn view(state: &Shift) -> Element<'_, Message> {
     let controls_bar = container(
         row![
             row![
-                button("Ouvrir").on_press(Message::OpenFile),
-                button("Dossier").on_press(Message::OpenFolder),
+                button(t("open")).on_press(Message::OpenFile),
+                button(t("open_folder")).on_press(Message::OpenFolder),
             ]
             .spacing(10)
             .wrap(),
@@ -251,7 +252,11 @@ pub fn view(state: &Shift) -> Element<'_, Message> {
                 button("→").on_press_maybe(state.current_index.and_then(|index| {
                     (index + 1 < state.images_in_dir.len()).then_some(Message::NextImage)
                 })),
-                button(if state.fit_to_view { "100%" } else { "Ajuster" }).on_press_maybe(
+                button(text(if state.fit_to_view {
+                    zoom_label(1.0)
+                } else {
+                    t("fit").to_string()
+                })).on_press_maybe(
                     state.current_path.as_ref().and(Some(if state.fit_to_view {
                         Message::ResetZoom
                     } else {
@@ -259,9 +264,9 @@ pub fn view(state: &Shift) -> Element<'_, Message> {
                     }))
                 ),
                 button(if state.fullscreen {
-                    "Fenêtre"
+                    t("window")
                 } else {
-                    "Plein écran"
+                    t("fullscreen")
                 })
                 .on_press_maybe(
                     state
@@ -326,10 +331,10 @@ pub fn view(state: &Shift) -> Element<'_, Message> {
         None => container(
             column![
                 text("Shift").size(34),
-                text("Un viewer calme, local, rapide.").size(16),
+                text(t("tagline")).size(16),
                 row![
-                    button("Ouvrir").on_press(Message::OpenFile),
-                    button("Dossier").on_press(Message::OpenFolder),
+                    button(t("open")).on_press(Message::OpenFile),
+                    button(t("open_folder")).on_press(Message::OpenFolder),
                 ]
                 .spacing(10)
                 .wrap(),
@@ -344,8 +349,8 @@ pub fn view(state: &Shift) -> Element<'_, Message> {
         .into(),
     };
 
-    let meta_bar = show_meta_bar.then(|| {
-        container(text(viewer_meta_line(state)).size(13))
+    let meta_bar = state.current_path.as_deref().filter(|_| show_meta_bar).map(|path| {
+        container(text(viewer_meta_line(state, path)).size(13))
             .width(Length::Fill)
             .padding([6, 10])
             .style(container::bordered_box)
@@ -393,26 +398,15 @@ fn footer_visible(state: &Shift) -> bool {
     state.status != STATUS_PLACEHOLDER && !state.fullscreen
 }
 
-fn viewer_meta_line(state: &Shift) -> String {
-    let position_label = match (state.current_index, state.images_in_dir.is_empty()) {
-        (Some(index), false) => format!("{} / {}", index + 1, state.images_in_dir.len()),
-        _ => "Aucune image".to_string(),
-    };
-
-    let file_label = state
-        .current_path
-        .as_ref()
-        .and_then(|path| path.file_name())
-        .map(|name| truncate_middle(&name.to_string_lossy(), 28))
-        .unwrap_or_else(|| "Aucun fichier".to_string());
-
-    let details_label = state
-        .current_path
-        .as_ref()
-        .and_then(|path| image_details_label(path, state.image_info.as_ref()))
-        .unwrap_or_else(|| "détails indisponibles".to_string());
-
-    format!("{} • {} • {}", position_label, file_label, details_label)
+/// Position in the folder, file name, then the image details.
+fn viewer_meta_line(state: &Shift, path: &Path) -> String {
+    let mut parts = Vec::with_capacity(3);
+    if let Some(index) = state.current_index {
+        parts.push(format!("{} / {}", index + 1, state.images_in_dir.len()));
+    }
+    parts.push(image_name_label(path, 28));
+    parts.push(image_details_label(path, state.image_info.as_ref()));
+    parts.join(" • ")
 }
 
 fn viewer_width(state: &Shift) -> Length {
@@ -543,7 +537,7 @@ fn mouse_action(state: &Shift, event: &Event) -> Option<Message> {
 
 async fn pick_file() -> Option<PathBuf> {
     FileDialog::new()
-        .add_filter("Images", SUPPORTED_EXTENSIONS)
+        .add_filter(t("file_filter_images"), SUPPORTED_EXTENSIONS)
         .pick_file()
 }
 
@@ -663,7 +657,7 @@ mod tests {
         open_folder(&mut state, &empty);
 
         assert_eq!(state.current_folder, Some(empty));
-        assert!(state.status.starts_with("Aucune image trouvée"));
+        assert!(state.status.starts_with("No images found in"));
         assert!(state.current_path.is_none());
         assert!(state.current_index.is_none());
         assert!(state.images_in_dir.is_empty());
@@ -678,7 +672,7 @@ mod tests {
 
         let _ = update(&mut state, Message::FilePicked(None));
 
-        assert_eq!(state.status, "Aucune image ouverte.");
+        assert_eq!(state.status, "No image open.");
     }
 
     #[test]
@@ -717,7 +711,7 @@ mod tests {
 
         open_folder(&mut state, &fixture.0);
 
-        assert_eq!(state.status, "Impossible de lire cassée.png");
+        assert_eq!(state.status, "Cannot read cassée.png");
         assert_eq!(state.current_index, Some(0));
         assert!(state.image_info.is_none());
     }
@@ -774,6 +768,6 @@ mod tests {
 
         assert_eq!(state.current_path, Some(picked.clone()));
         assert_eq!(state.images_in_dir, vec![picked]);
-        assert_eq!(state.status, "Impossible de lire scan.dat");
+        assert_eq!(state.status, "Cannot read scan.dat");
     }
 }
