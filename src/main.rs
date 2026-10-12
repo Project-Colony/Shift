@@ -4,6 +4,7 @@ mod app;
 mod format;
 mod gallery;
 mod i18n;
+mod style;
 
 use std::ffi::OsStr;
 
@@ -17,10 +18,18 @@ fn main() -> iced::Result {
 
     i18n::set_locale(i18n::system_locale());
 
-    iced::application(app::Shift::default, app::update, app::view)
-        .title("Shift")
-        .theme(app::theme)
+    // The Colony fonts: JetBrainsMono Nerd Font for the interface and its
+    // glyphs, OpenDyslexic for the accessibility swap, Font Awesome.
+    colony_ui::fonts::BYTES
+        .into_iter()
+        .fold(
+            iced::application(app::Shift::default, app::update, app::view),
+            |application, font| application.font(font),
+        )
+        .title(app::NAME)
+        .theme(style::theme)
         .subscription(app::subscription)
+        .default_font(colony_ui::ui_font())
         .run()
 }
 

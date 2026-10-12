@@ -9,10 +9,14 @@ use crate::gallery::{
     ImageInfo, SUPPORTED_EXTENSIONS, collect_images_in_dir, collect_images_in_same_dir,
     read_image_info,
 };
+use crate::style;
+use colony_ui::theme::Palette;
+use colony_ui::widgets::icons;
+use colony_ui::{Typography, fonts};
 use iced::{
-    Alignment, ContentFit, Element, Event, Length, Subscription, Task, Theme, event, keyboard,
+    Alignment, Color, ContentFit, Element, Event, Length, Subscription, Task, event, keyboard,
     mouse,
-    widget::{button, column, container, image, row, scrollable, text},
+    widget::{button, column, container, image, row, scrollable, text, tooltip},
     window,
 };
 use rfd::FileDialog;
@@ -24,6 +28,13 @@ const ZOOM_STEP: f32 = 0.25;
 const VIEWER_BASE_WIDTH: f32 = 960.0;
 const VIEWER_BASE_HEIGHT: f32 = 640.0;
 const STATUS_PLACEHOLDER: &str = "";
+
+/// The program's name: a proper noun, the same in every language.
+pub const NAME: &str = "Shift";
+
+/// Font Awesome's chevron-left, in the Nerd Font's range. Its right-hand
+/// twin ships with colony-ui.
+const CHEVRON_LEFT: &str = "\u{f053}";
 
 #[derive(Debug)]
 pub struct Shift {
@@ -230,52 +241,59 @@ pub fn update(state: &mut Shift, message: Message) -> Task<Message> {
 }
 
 pub fn view(state: &Shift) -> Element<'_, Message> {
+    // Read once per frame: both text-size preferences and, with the dyslexia
+    // font on, OpenDyslexic in every weight.
+    let typo = Typography::current();
     let has_image = state.current_path.is_some();
     let show_controls_bar = !state.fullscreen || !has_image;
-    let show_meta_bar = has_image && !state.fullscreen;
-    let show_footer = footer_visible(state);
+    let framed = has_image && !state.fullscreen;
 
     let controls_bar = container(
         row![
+            open_buttons(&typo),
             row![
-                button(t("open")).on_press(Message::OpenFile),
-                button(t("open_folder")).on_press(Message::OpenFolder),
-            ]
-            .spacing(10)
-            .wrap(),
-            row![
-                button("←").on_press_maybe(
+                arrow_button(
+                    &typo,
+                    CHEVRON_LEFT,
+                    t("previous_image"),
                     state
                         .current_index
-                        .and_then(|index| (index > 0).then_some(Message::PreviousImage))
+                        .and_then(|index| (index > 0).then_some(Message::PreviousImage)),
                 ),
-                button("→").on_press_maybe(state.current_index.and_then(|index| {
-                    (index + 1 < state.images_in_dir.len()).then_some(Message::NextImage)
-                })),
-                button(text(if state.fit_to_view {
-                    zoom_label(1.0)
-                } else {
-                    t("fit").to_string()
-                })).on_press_maybe(
-                    state.current_path.as_ref().and(Some(if state.fit_to_view {
+                arrow_button(
+                    &typo,
+                    icons::CHEVRON_RIGHT,
+                    t("next_image"),
+                    state.current_index.and_then(|index| {
+                        (index + 1 < state.images_in_dir.len()).then_some(Message::NextImage)
+                    }),
+                ),
+                action_button(
+                    &typo,
+                    if state.fit_to_view {
+                        zoom_label(1.0)
+                    } else {
+                        t("fit").to_string()
+                    },
+                    has_image.then_some(if state.fit_to_view {
                         Message::ResetZoom
                     } else {
                         Message::ToggleFit
-                    }))
+                    }),
                 ),
-                button(if state.fullscreen {
-                    t("window")
-                } else {
-                    t("fullscreen")
-                })
-                .on_press_maybe(
-                    state
-                        .current_path
-                        .as_ref()
-                        .map(|_| Message::ToggleFullscreen)
+                action_button(
+                    &typo,
+                    t(if state.fullscreen {
+                        "window"
+                    } else {
+                        "fullscreen"
+                    })
+                    .to_string(),
+                    has_image.then_some(Message::ToggleFullscreen),
                 ),
             ]
             .spacing(10)
+            .align_y(Alignment::Center)
             .wrap(),
         ]
         .width(Length::Fill)
@@ -285,7 +303,7 @@ pub fn view(state: &Shift) -> Element<'_, Message> {
     )
     .width(Length::Fill)
     .padding([10, 12])
-    .style(container::bordered_box);
+    .style(style::bar);
 
     let viewer: Element<'_, Message> = match &state.current_path {
         Some(path) => {
@@ -325,19 +343,20 @@ pub fn view(state: &Shift) -> Element<'_, Message> {
             container(framed_viewer)
                 .width(Length::Fill)
                 .height(Length::Fill)
-                .style(container::dark)
+                .style(style::viewer)
                 .into()
         }
         None => container(
             column![
-                text("Shift").size(34),
-                text(t("tagline")).size(16),
-                row![
-                    button(t("open")).on_press(Message::OpenFile),
-                    button(t("open_folder")).on_press(Message::OpenFolder),
-                ]
-                .spacing(10)
-                .wrap(),
+                text(NAME)
+                    .size(typo.sz(34))
+                    .font(typo.bold)
+                    .color(Palette::TEXT_PRIMARY()),
+                text(t("tagline"))
+                    .size(typo.sz(16))
+                    .font(typo.regular)
+                    .color(Palette::TEXT_MUTED()),
+                open_buttons(&typo),
             ]
             .spacing(14)
             .align_x(Alignment::Center),
@@ -349,19 +368,14 @@ pub fn view(state: &Shift) -> Element<'_, Message> {
         .into(),
     };
 
-    let meta_bar = state.current_path.as_deref().filter(|_| show_meta_bar).map(|path| {
-        container(text(viewer_meta_line(state, path)).size(13))
-            .width(Length::Fill)
-            .padding([6, 10])
-            .style(container::bordered_box)
-    });
+    let meta_bar = state
+        .current_path
+        .as_deref()
+        .filter(|_| !state.fullscreen)
+        .map(|path| status_bar(&typo, viewer_meta_line(state, path), Palette::TEXT_SECONDARY()));
 
-    let footer = show_footer.then(|| {
-        container(text(&state.status).size(13))
-            .width(Length::Fill)
-            .padding([6, 10])
-            .style(container::bordered_box)
-    });
+    let footer = footer_visible(state)
+        .then(|| status_bar(&typo, state.status.clone(), Palette::TEXT_MUTED()));
 
     let content = column![
         show_controls_bar.then_some(controls_bar),
@@ -369,16 +383,8 @@ pub fn view(state: &Shift) -> Element<'_, Message> {
         meta_bar,
         footer
     ]
-    .spacing(if has_image && !state.fullscreen {
-        10
-    } else {
-        0
-    })
-    .padding(if has_image && !state.fullscreen {
-        14
-    } else {
-        0
-    })
+    .spacing(if framed { 10 } else { 0 })
+    .padding(if framed { 14 } else { 0 })
     // An open image gets the whole window so fit mode can use all of it; the
     // cap only keeps the empty start screen compact.
     .max_width(if has_image || state.fullscreen {
@@ -391,6 +397,60 @@ pub fn view(state: &Shift) -> Element<'_, Message> {
         .width(Length::Fill)
         .height(Length::Fill)
         .center_x(Length::Fill)
+        .into()
+}
+
+/// Open and Folder: on the control bar and on the start screen.
+fn open_buttons<'a>(typo: &Typography) -> Element<'a, Message> {
+    row![
+        action_button(typo, t("open").to_string(), Some(Message::OpenFile)),
+        action_button(typo, t("open_folder").to_string(), Some(Message::OpenFolder)),
+    ]
+    .spacing(10)
+    .wrap()
+    .into()
+}
+
+/// A labelled button, disabled when `on_press` is `None`.
+fn action_button<'a>(
+    typo: &Typography,
+    label: String,
+    on_press: Option<Message>,
+) -> Element<'a, Message> {
+    button(text(label).size(typo.sz(14)).font(typo.regular))
+        .padding([6, 12])
+        .style(style::button)
+        .on_press_maybe(on_press)
+        .into()
+}
+
+/// A previous or next chevron. It has no words of its own, so its tooltip
+/// says what it does.
+fn arrow_button<'a>(
+    typo: &Typography,
+    glyph: &'static str,
+    hint: &'static str,
+    on_press: Option<Message>,
+) -> Element<'a, Message> {
+    tooltip(
+        button(text(glyph).size(typo.sz(14)).font(fonts::glyph_font()))
+            .padding([6, 12])
+            .style(style::button)
+            .on_press_maybe(on_press),
+        container(text(hint).size(typo.sz(12)).font(typo.regular))
+            .padding([4, 8])
+            .style(style::tooltip),
+        tooltip::Position::Bottom,
+    )
+    .into()
+}
+
+/// The details bar and the status line.
+fn status_bar<'a>(typo: &Typography, line: String, color: Color) -> Element<'a, Message> {
+    container(text(line).size(typo.sz(13)).font(typo.regular).color(color))
+        .width(Length::Fill)
+        .padding([6, 10])
+        .style(style::bar)
         .into()
 }
 
@@ -439,10 +499,6 @@ fn manual_base_height(state: &Shift) -> f32 {
         .as_ref()
         .map(|info| info.height as f32)
         .unwrap_or(VIEWER_BASE_HEIGHT)
-}
-
-pub fn theme(_state: &Shift) -> Theme {
-    Theme::TokyoNight
 }
 
 pub fn subscription(_state: &Shift) -> Subscription<Message> {
