@@ -32,12 +32,14 @@ jobs:
         with:
           persist-credentials: false
 
-      # Pinned to master with `toolchain: stable` rather than to the `stable`
-      # branch: that branch is rebased onto every master commit, so a SHA
-      # pinned on it stops being reachable from any branch.
-      - uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # master, 2026-10-09
-        with:
-          toolchain: stable
+      # rustup is on every GitHub-hosted runner image, so there is no
+      # third-party toolchain action to pin. bash keeps the step the same on
+      # the Windows and macOS legs.
+      - name: Install Rust
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
 
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
 
@@ -63,9 +65,11 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "RUSTUP_TOOLCHAIN=$version" >> "$GITHUB_ENV"
 
-      - uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # master, 2026-10-09
-        with:
-          toolchain: ${{ steps.msrv.outputs.version }}
+      - name: Install Rust
+        shell: bash
+        run: |
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --no-self-update
+          rustup default "$RUSTUP_TOOLCHAIN"
 
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
@@ -85,10 +89,12 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # master, 2026-10-09
-        with:
-          toolchain: stable
-          components: clippy
+      - name: Install Rust
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+          rustup component add clippy
 
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
 
@@ -103,10 +109,12 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # master, 2026-10-09
-        with:
-          toolchain: stable
-          components: rustfmt
+      - name: Install Rust
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+          rustup component add rustfmt
 
       - name: Formatting
         run: cargo fmt --check
