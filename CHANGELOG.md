@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/Project-Colony/Shift/compare/v0.2.0...v0.2.1) (2026-11-09)
+
+
+### Fixes
+
+* **deps:** update dependencies and Rust to 1.99 ([#26](https://github.com/Project-Colony/Shift/issues/26)) ([fd63e19](https://github.com/Project-Colony/Shift/commit/fd63e193a91dac234725cc1e06ac3098ae495425))
+
 ## [0.2.0](https://github.com/Project-Colony/Shift/compare/v0.1.0...v0.2.0) (2026-10-14)
 
 
