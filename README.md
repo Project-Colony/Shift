@@ -21,7 +21,7 @@ no library and never changes your files.
 > unreadable images and empty folders, navigation, zoom, natural sort order, the
 > status line, opening and closing Preferences, and saving and reloading the
 > preferences file, corrupt files included. CI runs them on Linux, Windows and
-> macOS and on the Rust 1.88 floor, with clippy and rustfmt. Drawing, most of
+> macOS and on the Rust 1.99 floor, with clippy and rustfmt. Drawing, most of
 > the keyboard and mouse bindings, fullscreen and the file pickers have no
 > automated tests. The interface ships in English and French.
 
@@ -102,7 +102,7 @@ cd Shift
 cargo build --release
 ```
 
-Requires Rust 1.88 or newer.
+Requires Rust 1.99 or newer.
 
 The binary is built as `target/release/shift` (`shift.exe` on Windows).
 `shift --version` prints the version and exits without opening a window.
